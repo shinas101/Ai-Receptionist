@@ -1,0 +1,25 @@
+# ==============================================================================
+# Fly.io Deployment Configuration for LiveKit Voice Agent
+# LiveKit agents connect outbound to LiveKit Cloud via WebRTC/WebSocket,
+# so the worker pod does not require an incoming HTTP port.
+# ==============================================================================
+
+app = "ai-receptionist-agent"
+primary_region = "sin"  # Singapore / nearest edge to India (or 'iad', 'fra', 'bom')
+
+[build]
+dockerfile = "Dockerfile"
+
+[env]
+PYTHONUNBUFFERED = "1"
+
+# Production machine sizing:
+# LiveKit recommends 2 shared CPUs and 2GB RAM for smooth VAD and audio pipeline
+[[vm]]
+cpu_kind = "shared"
+cpus = 2
+memory_mb = 2048
+
+# Scaling configuration
+[processes]
+app = "uv run agent.py start"

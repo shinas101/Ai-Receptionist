@@ -1,0 +1,33 @@
+# ==============================================================================
+# Production Dockerfile for Clinical REST & Token API Server
+# Serves LiveKit JWT dispatch, appointments CRUD, and clinic settings on :8080
+# ==============================================================================
+
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+
+WORKDIR /app
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PYTHONUNBUFFERED=1 \
+    PORT=8080
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --frozen --no-install-project --no-dev
+
+COPY . .
+
+# Expose API port
+EXPOSE 8080
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/api/doctors || exit 1
+
+CMD ["uv", "run", "python", "token_server.py"]

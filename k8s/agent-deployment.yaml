@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clinic-voice-agent
+  labels:
+    app: clinic-voice-agent
+spec:
+  # Scale replicas based on concurrent call volume (1 replica can handle 5-10 concurrent audio sessions)
+  replicas: 2
+  selector:
+    matchLabels:
+      app: clinic-voice-agent
+  template:
+    metadata:
+      labels:
+        app: clinic-voice-agent
+    spec:
+      containers:
+        - name: agent
+          image: ghcr.io/shinas101/ai-receptionist-agent:latest
+          command: ["uv", "run", "agent.py", "start"]
+          env:
+            - name: LIVEKIT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: clinic-secrets
+                  key: LIVEKIT_URL
+            - name: LIVEKIT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: clinic-secrets
+                  key: LIVEKIT_API_KEY
+            - name: LIVEKIT_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: clinic-secrets
+                  key: LIVEKIT_API_SECRET
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: clinic-secrets
+                  key: OPENAI_API_KEY
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: clinic-secrets
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clinic-secrets
+type: Opaque
+stringData:
+  LIVEKIT_URL: "wss://ai-voice-1k1vmmvd.livekit.cloud"
+  LIVEKIT_API_KEY: "your_livekit_api_key"
+  LIVEKIT_API_SECRET: "your_livekit_api_secret"
+  OPENAI_API_KEY: "your_openai_api_key"
+  DATABASE_URL: "postgresql://postgres:password@postgres-service:5432/ai_receptionist"

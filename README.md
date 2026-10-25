@@ -107,10 +107,50 @@ Open `http://localhost:5173` in your browser, click **"Start Call"**, and speak 
 
 ---
 
+## 🐳 Production Deployment
+
+### 1. Docker Compose (Full Stack Deployment)
+Run PostgreSQL with `pgvector`, the Token/Clinical API server, and the production LiveKit Agent worker (`agent.py start`) together:
+
+```bash
+docker compose up --build -d
+```
+
+### 2. Fly.io (LiveKit Recommended Edge Hosting)
+LiveKit agent workers connect outbound to LiveKit Cloud via WebSockets/WebRTC, making Fly.io the premier choice for zero-ingress edge deployments:
+
+```bash
+# 1. Set production secrets
+fly secrets set \
+  LIVEKIT_URL="wss://your-project.livekit.cloud" \
+  LIVEKIT_API_KEY="your_api_key" \
+  LIVEKIT_API_SECRET="your_api_secret" \
+  OPENAI_API_KEY="your_openai_key" \
+  DATABASE_URL="postgresql://user:pass@ep-xyz.neon.tech/ai_receptionist"
+
+# 2. Deploy the agent container
+fly deploy
+```
+
+### 3. Kubernetes (AWS EKS / GKE)
+Deploy scalable worker replicas using the Kubernetes deployment manifest in `k8s/agent-deployment.yaml`:
+
+```bash
+kubectl apply -f k8s/agent-deployment.yaml
+```
+
+---
+
 ## 🛠️ Project Structure
 
 ```
 ai-receptionist/
+├── Dockerfile             # Production container for LiveKit Agent worker (agent.py start)
+├── Dockerfile.api         # Production container for Token & Clinical REST API
+├── docker-compose.yml     # Local/VPS orchestration (Postgres + pgvector, API, Agent)
+├── fly.toml               # Fly.io production deployment configuration
+├── k8s/
+│   └── agent-deployment.yaml # Kubernetes Deployment & Secret manifests
 ├── agent.py               # LiveKit AI voice agent (Mia's persona, clinical safety prompt, tools)
 ├── token_server.py        # aiohttp API server (JWT dispatch, appointments CRUD, settings API)
 ├── db.sql                 # PostgreSQL schema (customers, customer_memories, doctors, appointments)

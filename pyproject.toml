@@ -3,7 +3,7 @@ name = "ai-receptionist"
 version = "0.1.0"
 description = "AI Medical Virtual Receptionist backend and clinical dashboard for ABC Health Care"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
     "asyncpg>=0.32.0",
     "dotenv>=0.9.9",
