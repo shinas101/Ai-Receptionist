@@ -24,23 +24,45 @@ LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
 
 
-def cors_headers():
+ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,https://localhost,http://localhost,*",
+    ).split(",")
+    if o.strip()
+]
+
+
+def cors_headers(request=None):
+    origin = request.headers.get("Origin") if request else None
+
+    if "*" in ALLOWED_ORIGINS:
+        allow_origin = origin if origin else "*"
+    elif origin and (origin in ALLOWED_ORIGINS or "localhost" in origin or "127.0.0.1" in origin):
+        allow_origin = origin
+    elif ALLOWED_ORIGINS:
+        allow_origin = ALLOWED_ORIGINS[0]
+    else:
+        allow_origin = "*"
+
     return {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": allow_origin,
         "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Pin",
+        "Access-Control-Allow-Credentials": "true",
     }
 
 
-def json_response(data, status=200, headers=None):
-    h = cors_headers()
+def json_response(data, status=200, headers=None, request=None):
+    h = cors_headers(request)
     if headers:
         h.update(headers)
     return web.json_response(data, status=status, headers=h, dumps=lambda o: json.dumps(o, default=str))
 
 
 async def options_handler(request: web.Request):
-    return web.Response(headers=cors_headers())
+    return web.Response(headers=cors_headers(request))
 
 
 async def get_token(request: web.Request):
@@ -254,6 +276,8 @@ def create_app():
     app = web.Application()
     app.router.add_get("/api/token", get_token)
     app.router.add_options("/api/token", options_handler)
+    app.router.add_get("/token", get_token)
+    app.router.add_options("/token", options_handler)
 
     app.router.add_get("/api/settings", get_settings_handler)
     app.router.add_post("/api/settings", post_settings_handler)

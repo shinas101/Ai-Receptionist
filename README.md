@@ -109,12 +109,21 @@ Open `http://localhost:5173` in your browser, click **"Start Call"**, and speak 
 
 ## 🐳 Production Deployment
 
-### 1. Docker Compose (Full Stack Deployment)
-Run PostgreSQL with `pgvector`, the Token/Clinical API server, and the production LiveKit Agent worker (`agent.py start`) together:
+### 1. Docker Compose (Full Stack with Nginx Gateway, SSL & Rate Limiting)
+Run PostgreSQL with `pgvector`, the Token/Clinical API, the production LiveKit Agent worker (`agent.py start`), and the **Nginx Reverse Proxy Gateway** with SSL/HTTPS, rate-limiting, and CORS:
 
 ```bash
+# 1. (Optional) Generate/refresh self-signed SSL certificates for local/IP HTTPS
+uv run python scripts/generate_ssl.py
+
+# 2. Launch all containerized services
 docker compose up --build -d
 ```
+
+- **HTTPS Ingress**: `https://localhost` (port 443 with TLS 1.2/1.3 and automatic HTTP port 80 redirect).
+- **Rate-Limiting**: 10 req/s on `/api/`, 2 req/s on `/api/token` with burst buffers and standard HTTP 429 JSON responses.
+- **CORS Restriction**: Origin validation dynamically restricts API access to clinic domains or local origins via `ALLOWED_ORIGINS`.
+- **Domainless Ready**: Uses SAN certificates for `localhost`, `127.0.0.1`, and IP addresses with zero domain registration required.
 
 ### 2. Fly.io (LiveKit Recommended Edge Hosting)
 LiveKit agent workers connect outbound to LiveKit Cloud via WebSockets/WebRTC, making Fly.io the premier choice for zero-ingress edge deployments:
@@ -168,13 +177,18 @@ heroku ps:scale web=1 worker=1
 
 ```
 ai-receptionist/
+├── nginx/
+│   ├── nginx.conf         # Reverse proxy, SSL termination, rate-limiting & CORS configuration
+│   └── ssl/               # Self-signed and production X.509 certificates (cert.pem, key.pem)
+├── scripts/
+│   └── generate_ssl.py    # Automated SSL certificate generator for localhost & IP access
+├── Dockerfile             # Production container for LiveKit Agent worker (agent.py start)
+├── Dockerfile.api         # Production container for Token & Clinical REST API
+├── docker-compose.yml     # Full stack orchestration (Postgres, API, Nginx Gateway, Agent)
 ├── Procfile               # Heroku process types (web: token_server.py, worker: agent.py start)
 ├── runtime.txt            # Heroku Python runtime specification (python-3.12.7)
 ├── app.json               # Heroku app manifest for one-click button deployments
 ├── requirements.txt       # Production pip dependencies for buildpacks
-├── Dockerfile             # Production container for LiveKit Agent worker (agent.py start)
-├── Dockerfile.api         # Production container for Token & Clinical REST API
-├── docker-compose.yml     # Local/VPS orchestration (Postgres + pgvector, API, Agent)
 ├── fly.toml               # Fly.io production deployment configuration
 ├── k8s/
 │   └── agent-deployment.yaml # Kubernetes Deployment & Secret manifests
