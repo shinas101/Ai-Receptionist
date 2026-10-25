@@ -4,11 +4,13 @@ import { RefreshCw, Activity, Calendar, Clock, CheckCircle } from 'lucide-react'
 export default function Header({ stats, onRefresh, isRefreshing, isConnected, onToggleCall }) {
   return (
     <header className="h-14 shrink-0 border-b border-[#222222] bg-[#000000] px-4 sm:px-6 flex items-center justify-between text-sm select-none z-10">
-      {/* Left: Square Brand Box + Title */}
+      {/* Left: Brand Icon + Title */}
       <div className="flex items-center gap-3">
-        <div className="border border-white/30 rounded px-2 py-0.5 text-xs font-bold tracking-wider text-white bg-white/5">
-          ABC
-        </div>
+        <img
+          src="/favicon.svg"
+          alt="ABC Logo"
+          className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(192,132,252,0.7)]"
+        />
         <div className="flex items-baseline gap-2">
           <span className="font-bold text-base sm:text-lg text-white tracking-tight">
             ABC Health Care
