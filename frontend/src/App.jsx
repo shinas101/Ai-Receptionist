@@ -89,24 +89,13 @@ export default function App() {
         }}
       />
 
-      {/* Main Content Area with generous padding & margins per Hallmark guidelines */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col p-6 sm:p-8 lg:p-10 xl:p-12 max-w-[1800px] w-full mx-auto space-y-8">
-        {/* Dashboard Title & Overview Metrics */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <span className="text-xs uppercase font-mono px-2.5 py-0.5 rounded-full bg-purple-950/50 border border-purple-800/40 text-purple-300 font-semibold tracking-wider">
-                Clinical Reception System
-              </span>
-              <span className="text-xs text-zinc-500 font-mono hidden sm:inline">• Real-time Sync Active</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-              Dashboard
-            </h1>
-            <p className="text-sm text-zinc-400 mt-1 font-mono">
-              Manage clinic appointments, patient records, specialist schedules, and voice consultations.
-            </p>
-          </div>
+        {/* Dashboard Title */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+            Dashboard
+          </h1>
         </div>
 
         {/* 3 Metric Cards with generous padding and subtle tactile borders */}

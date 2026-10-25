@@ -220,38 +220,28 @@ export default function LiveCalendar({
       </div>
 
       {/* Prominent Doctors Provider Bar ("make doctors list little big") */}
-      <div className="px-6 sm:px-8 py-4.5 bg-[#070707] border-b border-[#222222]">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-semibold flex items-center gap-2">
-            <Stethoscope className="w-4 h-4 text-purple-400" />
-            <span>Clinic Specialists & Doctors</span>
-          </div>
-          <span className="text-xs text-zinc-500 font-mono">
-            {selectedDoctorId ? 'Filtered by Doctor' : 'All Specialists'}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="px-6 sm:px-8 py-5 bg-[#070708] border-b border-[#222222]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {/* All Doctors Card */}
           <button
             type="button"
             onClick={() => onChangeDoctor('')}
-            className={`p-3.5 rounded-xl border text-left transition-all duration-150 flex items-center justify-between ${
+            className={`p-4 sm:p-5 rounded-2xl border text-left transition-all duration-200 flex items-center justify-between ${
               !selectedDoctorId
-                ? 'bg-[#151515] border-white text-white shadow-lg ring-1 ring-white/20'
-                : 'bg-[#0d0d0d] border-[#242424] text-zinc-300 hover:border-[#3a3a3a] hover:bg-[#141414]'
+                ? 'bg-[#161618] border-white text-white shadow-xl ring-2 ring-white/10 -translate-y-0.5'
+                : 'bg-[#0d0d0f] border-[#242428] text-zinc-300 hover:border-zinc-500 hover:bg-[#141416] hover:-translate-y-0.5 shadow-md'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[#1c1c1c] border border-[#2e2e2e] flex items-center justify-center font-bold text-xs text-white">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-[#1c1c20] border border-[#2e2e34] flex items-center justify-center font-bold text-sm text-white shadow-inner">
                 ALL
               </div>
               <div>
-                <div className="font-semibold text-sm text-white">All Doctors</div>
-                <div className="text-xs text-zinc-400">All Clinic Rooms</div>
+                <div className="font-semibold text-base text-white tracking-tight">All Doctors</div>
+                <div className="text-xs text-zinc-400 font-mono mt-0.5">Clinic Overview</div>
               </div>
             </div>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#1c1c1c] font-mono text-zinc-400 border border-[#2a2a2a]">
+            <span className="text-sm px-3 py-1 rounded-full bg-[#1c1c20] font-mono text-zinc-300 border border-[#2e2e34] font-semibold">
               {appointments.length}
             </span>
           </button>
@@ -273,32 +263,32 @@ export default function LiveCalendar({
                 key={doc.id}
                 type="button"
                 onClick={() => onChangeDoctor(doc.id)}
-                className={`p-3.5 rounded-xl border text-left transition-all duration-150 flex items-center justify-between ${
+                className={`p-4 sm:p-5 rounded-2xl border text-left transition-all duration-200 flex items-center justify-between ${
                   isDocSelected
-                    ? 'bg-[#151515] border-purple-400 text-white shadow-lg ring-1 ring-purple-500/30'
-                    : 'bg-[#0d0d0d] border-[#242424] text-zinc-300 hover:border-[#3a3a3a] hover:bg-[#141414]'
+                    ? 'bg-[#161618] border-purple-400 text-white shadow-xl ring-2 ring-purple-500/25 -translate-y-0.5'
+                    : 'bg-[#0d0d0f] border-[#242428] text-zinc-300 hover:border-zinc-500 hover:bg-[#141416] hover:-translate-y-0.5 shadow-md'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3.5 min-w-0">
                   <div
-                    className={`w-9 h-9 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0 ${
+                    className={`w-12 h-12 rounded-xl border flex items-center justify-center font-bold text-sm shrink-0 shadow-inner ${
                       isDocSelected
-                        ? 'bg-purple-950/70 border-purple-600 text-purple-200'
-                        : 'bg-[#181818] border-[#2c2c2c] text-zinc-300'
+                        ? 'bg-purple-950/80 border-purple-500 text-purple-200'
+                        : 'bg-[#18181c] border-[#2e2e34] text-zinc-200'
                     }`}
                   >
                     {initials}
                   </div>
                   <div className="min-w-0">
-                    <div className="font-semibold text-sm text-white truncate">
+                    <div className="font-semibold text-base text-white tracking-tight truncate">
                       {doc.name}
                     </div>
-                    <div className="text-xs text-zinc-400 flex items-center gap-1.5 truncate">
+                    <div className="text-xs text-zinc-400 flex items-center gap-1.5 truncate mt-0.5">
                       <span>{doc.specialty}</span>
                       {doc.room_number && (
                         <>
                           <span className="text-zinc-600">•</span>
-                          <span className="font-mono text-[11px] text-zinc-400">Rm {doc.room_number}</span>
+                          <span className="font-mono text-zinc-400">Rm {doc.room_number}</span>
                         </>
                       )}
                     </div>
@@ -306,10 +296,10 @@ export default function LiveCalendar({
                 </div>
 
                 <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-mono shrink-0 ml-2 border ${
+                  className={`text-sm px-3 py-1 rounded-full font-mono shrink-0 ml-2 border font-semibold ${
                     isDocSelected
-                      ? 'bg-purple-950/60 border-purple-800 text-purple-300'
-                      : 'bg-[#181818] border-[#2a2a2a] text-zinc-400'
+                      ? 'bg-purple-950/70 border-purple-800 text-purple-300'
+                      : 'bg-[#18181c] border-[#2e2e34] text-zinc-400'
                   }`}
                 >
                   {docApptsCount}
@@ -321,7 +311,7 @@ export default function LiveCalendar({
       </div>
 
       {/* Weekday Header */}
-      <div className="grid grid-cols-7 border-b border-[#222222] bg-[#050505] text-xs text-zinc-500 text-center font-medium py-2.5">
+      <div className="grid grid-cols-7 border-b border-[#222222] bg-[#050505] text-xs text-zinc-500 text-center font-medium py-3">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
           <div key={day} className="border-r border-[#1a1a1a] last:border-r-0">
             {day}
@@ -329,7 +319,7 @@ export default function LiveCalendar({
         ))}
       </div>
 
-      {/* Month Days Grid */}
+      {/* Month Days Grid with tactile Hallmark hover effect */}
       <div className="grid grid-cols-7 flex-1 auto-rows-fr bg-[#000000] overflow-y-auto">
         {monthData.map((d, idx) => {
           const dayAppts = appointmentsByDate[d.dateStr] || [];
@@ -340,30 +330,34 @@ export default function LiveCalendar({
             <div
               key={idx}
               onClick={() => handleDayClick(d.dateStr)}
-              className={`min-h-[95px] p-2.5 border-r border-b border-[#1a1a1a] relative cursor-pointer transition-colors ${
+              className={`group min-h-[105px] sm:min-h-[115px] p-3 sm:p-3.5 border-r border-b border-[#1c1c1c] relative cursor-pointer select-none transition-all duration-150 ease-out ${
                 !d.isCurrentMonth
-                  ? 'opacity-20 bg-[#000000]'
+                  ? 'opacity-20 bg-[#000000] hover:opacity-60 hover:bg-[#0c0c0e]'
                   : isSelected
-                  ? 'bg-[#111111] border-l-2 border-l-white'
-                  : 'hover:bg-[#0c0c0c]'
+                  ? 'bg-[#141416] ring-2 ring-inset ring-purple-500/60 shadow-lg'
+                  : 'bg-[#000000] hover:bg-[#121215] hover:ring-2 hover:ring-inset hover:ring-[#3e3e46] hover:shadow-xl hover:z-10'
               }`}
             >
               {/* Day Number */}
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2.5">
                 <span
-                  className={`text-sm ${
+                  className={`text-sm font-mono transition-all duration-150 ${
                     isToday
-                      ? 'font-bold text-white bg-white/10 px-1.5 py-0.5 rounded'
+                      ? 'font-bold text-white bg-purple-600/30 border border-purple-500/50 px-2 py-0.5 rounded-md shadow-sm'
                       : isSelected
-                      ? 'text-white font-bold'
-                      : 'text-zinc-400 font-medium'
+                      ? 'text-white font-bold scale-110'
+                      : 'text-zinc-400 font-medium group-hover:text-white group-hover:font-semibold group-hover:scale-110'
                   }`}
                 >
                   {d.dayNumber}
                 </span>
 
                 {dayAppts.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#1c1c1c] text-zinc-200 font-medium border border-[#2c2c2c]">
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono transition-colors ${
+                    isSelected
+                      ? 'bg-purple-950/80 text-purple-200 border border-purple-700/60'
+                      : 'bg-[#18181a] text-zinc-300 border border-[#2c2c2c] group-hover:border-zinc-500 group-hover:text-white'
+                  }`}>
                     {dayAppts.length}
                   </span>
                 )}
@@ -371,7 +365,7 @@ export default function LiveCalendar({
 
               {/* Day Appointment Pills */}
               <div className="space-y-1.5">
-                {dayAppts.map((apt) => {
+                {dayAppts.slice(0, 3).map((apt) => {
                   const time = apt.start_time
                     ? new Date(apt.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : '';
@@ -379,7 +373,7 @@ export default function LiveCalendar({
                   return (
                     <div
                       key={apt.id}
-                      className="text-xs truncate px-2 py-1 rounded bg-[#0f0f0f] border border-[#222222] text-zinc-200 hover:border-zinc-500 transition-colors flex items-center gap-1.5"
+                      className="text-xs truncate px-2.5 py-1 rounded-md bg-[#0e0e10] border border-[#242426] text-zinc-200 group-hover:border-[#3e3e44] group-hover:bg-[#16161a] transition-all flex items-center gap-1.5 shadow-sm"
                       title={`${apt.patient_name} - ${apt.doctor_name || ''}`}
                     >
                       <span className="text-zinc-400 font-mono text-[11px] shrink-0">{time}</span>
@@ -387,6 +381,11 @@ export default function LiveCalendar({
                     </div>
                   );
                 })}
+                {dayAppts.length > 3 && (
+                  <div className="text-[11px] text-zinc-500 font-mono pl-1 group-hover:text-purple-400 transition-colors">
+                    +{dayAppts.length - 3} more
+                  </div>
+                )}
               </div>
             </div>
           );

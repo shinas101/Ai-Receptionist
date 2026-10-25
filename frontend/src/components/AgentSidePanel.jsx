@@ -139,8 +139,7 @@ export default function AgentSidePanel({ livekit }) {
       </div>
 
       {/* Quick Prompts */}
-      <div className="px-5 py-2.5 border-b border-[#222222] bg-[#000000] flex items-center gap-2 overflow-x-auto">
-        <span className="text-xs text-zinc-500 shrink-0 font-medium">Quick:</span>
+      <div className="px-6 py-3 border-b border-[#222222] bg-[#000000] flex items-center gap-2.5 overflow-x-auto">
         {quickPrompts.map((p, i) => (
           <button
             key={i}
@@ -148,7 +147,7 @@ export default function AgentSidePanel({ livekit }) {
               if (!isConnected) connect();
               setTimeout(() => sendInquiry(p.text), isConnected ? 100 : 1200);
             }}
-            className="text-xs px-3 py-1 rounded bg-[#0e0e0e] hover:bg-[#1a1a1a] text-zinc-300 hover:text-white border border-[#222222] transition-colors shrink-0 font-medium"
+            className="text-xs px-3.5 py-1.5 rounded-lg bg-[#0e0e10] hover:bg-[#1a1a1f] text-zinc-300 hover:text-white border border-[#242428] hover:border-[#38383e] transition-colors shrink-0 font-medium shadow-sm"
           >
             {p.label}
           </button>
