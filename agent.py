@@ -193,10 +193,13 @@ async def my_agent(ctx: agents.JobContext):
                 })
             )
 
-    # Broadcast conversational items (Mia replies and patient utterances)
+    # Broadcast conversational items (Mia replies only - patient is handled by user_input_transcribed)
     @session.on("conversation_item_added")
     def _on_conversation_item_added(ev: events.ConversationItemAddedEvent):
         item = ev.item
+        role = getattr(item, "role", "")
+        if role != "assistant":
+            return
         text = getattr(item, "text_content", None)
         if not text and hasattr(item, "content"):
             if isinstance(item.content, str):
@@ -204,12 +207,10 @@ async def my_agent(ctx: agents.JobContext):
             elif isinstance(item.content, list):
                 text = " ".join([c for c in item.content if isinstance(c, str)])
         if text and str(text).strip():
-            role = getattr(item, "role", "")
-            speaker = "MIA" if role == "assistant" else "Patient"
             asyncio.create_task(
                 _safe_publish_data({
                     "type": "transcript",
-                    "speaker": speaker,
+                    "speaker": "MIA",
                     "text": str(text).strip(),
                     "final": True,
                     "id": getattr(item, "id", None) or f"conv-{int(time.time()*1000)}",
@@ -237,17 +238,6 @@ async def my_agent(ctx: agents.JobContext):
     greeting_text = (
         "Hello! Thank you for calling ABC Health Care. My name is Mia. "
         "How can I assist you with your appointment today?"
-    )
-
-    # Broadcast greeting transcript so dialogue shows it immediately
-    asyncio.create_task(
-        _safe_publish_data({
-            "type": "transcript",
-            "speaker": "MIA",
-            "text": greeting_text,
-            "final": True,
-            "id": f"greeting-{int(time.time()*1000)}",
-        })
     )
 
     await session.generate_reply(instructions=f"Say: {greeting_text}")

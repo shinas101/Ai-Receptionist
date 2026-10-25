@@ -7,13 +7,15 @@ import {
   Trash2,
   Bot,
   User,
+  History,
+  ChevronUp,
 } from 'lucide-react';
 import { AgentAudioVisualizerGrid } from './agents-ui/agent-audio-visualizer-grid';
 
 export default function AgentSidePanel({ livekit }) {
   const [inputText, setInputText] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
   const logContainerRef = useRef(null);
-  const messagesEndRef = useRef(null);
 
   const {
     connectionState,
@@ -32,11 +34,12 @@ export default function AgentSidePanel({ livekit }) {
   const isConnected = connectionState === 'connected';
   const isConnecting = connectionState === 'connecting';
 
+  // Automatically keep inner container scrolled to bottom ONLY when history is expanded, NEVER scroll the browser window
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (showHistory && logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [transcripts, isAgentSpeaking]);
+  }, [transcripts, isAgentSpeaking, showHistory]);
 
   const handleSendMessage = (e) => {
     e?.preventDefault();
@@ -50,6 +53,12 @@ export default function AgentSidePanel({ livekit }) {
     { label: 'Dermatologist Slots', text: 'What slots does Dr. Priya Menon have available for dermatology?' },
     { label: 'Cardiology Visit', text: 'I need to see Dr. Anil Kumar for a cardiology consultation.' },
   ];
+
+  // Auto-hide previous dialogue by default: show only the latest active exchange (Patient prompt + Mia reply)
+  // This guarantees zero window scrolling and no container overflow
+  const displayTranscripts = showHistory
+    ? transcripts
+    : transcripts.slice(-2);
 
   return (
     <div className="flex flex-col h-full bg-[#000000] border-l border-[#222222] select-none">
@@ -148,60 +157,111 @@ export default function AgentSidePanel({ livekit }) {
         ))}
       </div>
 
-      {/* Live Conversation Transcript with Smooth Auto-Scroll */}
+      {/* Live Conversation Transcript with Zero-Scroll Latest View & History Toggle */}
       <div className="flex-1 flex flex-col min-h-0 bg-[#000000] relative">
         <div className="px-5 py-2.5 border-b border-[#1c1c1c] flex items-center justify-between text-xs text-zinc-400">
-          <span className="font-semibold text-zinc-300">Live Dialogue</span>
-          <button
-            onClick={clearTranscripts}
-            title="Clear Chat"
-            className="text-zinc-500 hover:text-white transition-colors p-1"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-zinc-300">Live Dialogue</span>
+            {!showHistory ? (
+              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-purple-950/40 border border-purple-800/40 text-purple-300 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                Live Active
+              </span>
+            ) : (
+              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-300">
+                All Turns
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {transcripts.length > 2 && (
+              <button
+                onClick={() => setShowHistory((prev) => !prev)}
+                className="text-xs px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1c1c1c] text-zinc-300 hover:text-white border border-[#282828] transition-colors flex items-center gap-1.5"
+                title={showHistory ? 'Switch to auto-hide zero scroll' : 'View full dialogue history'}
+              >
+                {showHistory ? (
+                  <>
+                    <ChevronUp className="w-3 h-3 text-purple-400" />
+                    <span>Hide Past</span>
+                  </>
+                ) : (
+                  <>
+                    <History className="w-3 h-3 text-purple-400" />
+                    <span>History ({transcripts.length})</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={clearTranscripts}
+              title="Clear Chat"
+              className="text-zinc-500 hover:text-white transition-colors p-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
-        {/* Scrollable conversation messages with bigger, readable text */}
+        {/* Dialogue viewport: Zero-scroll fits latest exchange without window scrolling */}
         <div
           ref={logContainerRef}
-          className="flex-1 p-5 overflow-y-auto space-y-3.5 text-sm leading-relaxed select-text"
+          className={`flex-1 p-4 select-text ${
+            showHistory
+              ? 'overflow-y-auto space-y-3'
+              : 'overflow-hidden flex flex-col justify-end space-y-3'
+          }`}
         >
-          {transcripts.map((item) => {
+          {displayTranscripts.map((item) => {
             const isMia =
               item.speaker?.toUpperCase() === 'MIA' ||
               item.speaker?.toLowerCase().includes('agent') ||
               item.speaker?.toLowerCase().includes('receptionist') ||
               item.type === 'agent';
+            const isStreaming = item.final === false || (isMia && isAgentSpeaking);
 
             return (
               <div
                 key={item.id}
-                className={`p-3.5 rounded-lg border text-sm ${
+                className={`p-3.5 rounded-lg border text-sm transition-all duration-150 ${
                   isMia
-                    ? 'bg-[#0a0a0a] border-[#222222] text-white'
-                    : 'bg-[#121212] border-[#2a2a2a] text-zinc-200'
+                    ? 'bg-[#0a0a0a] border-[#262626] text-white shadow-sm'
+                    : 'bg-[#121212] border-[#2e2e2e] text-zinc-200'
                 }`}
               >
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className={`font-semibold flex items-center gap-1.5 ${isMia ? 'text-purple-400' : 'text-zinc-300'}`}>
-                    {isMia ? <Bot className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
-                    {isMia ? 'Mia' : 'You'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold flex items-center gap-1.5 ${isMia ? 'text-purple-400' : 'text-zinc-300'}`}>
+                      {isMia ? <Bot className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
+                      {isMia ? 'Mia' : 'You'}
+                    </span>
+                    {isStreaming && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-800/40 flex items-center gap-1 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                        Streaming
+                      </span>
+                    )}
+                  </div>
                   <span className="text-zinc-500 text-xs font-mono">{item.time}</span>
                 </div>
-                <div className="text-zinc-100 break-words leading-relaxed">{item.text}</div>
+                <div className="text-zinc-100 break-words leading-relaxed text-sm">
+                  {item.text}
+                  {isStreaming && (
+                    <span className="inline-block w-1.5 h-3.5 ml-1 bg-purple-400 animate-pulse align-middle" />
+                  )}
+                </div>
               </div>
             );
           })}
 
-          {isAgentSpeaking && (
-            <div className="text-purple-400 text-sm flex items-center gap-2 font-medium py-1">
-              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+          {isAgentSpeaking && !displayTranscripts.some((t) => (t.speaker?.toUpperCase() === 'MIA' || t.type === 'agent') && !t.final) && (
+            <div className="text-purple-400 text-xs flex items-center gap-2 font-medium py-1 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-purple-400" />
               <span>Mia is speaking...</span>
             </div>
           )}
-
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Message Form */}

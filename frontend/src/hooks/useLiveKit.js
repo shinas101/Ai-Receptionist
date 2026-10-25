@@ -29,17 +29,29 @@ export function useLiveKit() {
   const localMicStreamRef = useRef(null);
   const speechRecognitionRef = useRef(null);
 
+  // Helper to normalize strings for robust deduplication (removes punctuation, casing, extra whitespace)
+  const normalizeText = (str) =>
+    (str || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+
   // Append or update a clean transcript entry with in-place streaming and de-duplication
   const appendTranscript = useCallback((rawSpeaker, text, type = 'chat', isFinal = true, id = null) => {
     if (!text || !text.trim()) return;
     const cleanText = text.trim();
     const lower = (rawSpeaker || '').toLowerCase();
-    const isAgent = lower.includes('mia') || lower.includes('agent') || lower.includes('receptionist') || lower.includes('assistant');
+    const isAgent =
+      lower.includes('mia') ||
+      lower.includes('agent') ||
+      lower.includes('receptionist') ||
+      lower.includes('assistant');
     const speaker = isAgent ? 'MIA' : 'Patient';
     const msgType = isAgent ? 'agent' : 'user';
+    const normClean = normalizeText(cleanText);
+    if (!normClean) return;
 
     setTranscripts((prev) => {
-      // If updating an existing streaming/partial message
+      // 1. If explicit ID matches an existing card, update it in place (live streaming!)
       if (id) {
         const existingIdx = prev.findIndex((m) => m.id === id);
         if (existingIdx !== -1) {
@@ -48,17 +60,71 @@ export function useLiveKit() {
             ...updated[existingIdx],
             text: cleanText,
             final: isFinal,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
           return updated;
         }
       }
 
-      // Avoid consecutive duplicate messages from the same speaker
+      // 2. Replace static initial welcome card with the first live greeting from Mia
+      if (prev.length === 1 && prev[0].id === 'welcome' && isAgent) {
+        return [
+          {
+            id: id || `msg-${Date.now()}`,
+            speaker: 'MIA',
+            text: cleanText,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            type: 'agent',
+            final: isFinal,
+          },
+        ];
+      }
+
+      // 3. Check the very last message for in-place streaming continuation or duplicate
       const last = prev[prev.length - 1];
-      if (last && last.speaker === speaker && last.text.toLowerCase() === cleanText.toLowerCase()) {
+      if (last && last.speaker === speaker) {
+        const normLast = normalizeText(last.text);
+
+        // 3a. Exact duplicate match from multiple broadcast channels
+        if (normLast === normClean) {
+          if (isFinal && !last.final) {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              ...last,
+              final: true,
+            };
+            return updated;
+          }
+          return prev; // Ignore exact duplicate
+        }
+
+        // 3b. In-place streaming continuation (partial speech chunks or progressive response)
+        if (
+          !last.final ||
+          normClean.startsWith(normLast) ||
+          normLast.startsWith(normClean)
+        ) {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...last,
+            id: id || last.id,
+            text: cleanText.length >= last.text.length ? cleanText : last.text,
+            final: isFinal,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          return updated;
+        }
+      }
+
+      // 4. Check recent messages for duplicate broadcast echoes (within last 4 items)
+      const isRecentDuplicate = prev.slice(-4).some(
+        (m) => m.speaker === speaker && normalizeText(m.text) === normClean
+      );
+      if (isRecentDuplicate) {
         return prev;
       }
 
+      // 5. Append new message turn
       return [
         ...prev,
         {
@@ -248,6 +314,7 @@ export function useLiveKit() {
 
       // 4. Reliable Data Channel Packets (from agent.py broadcast)
       room.on(RoomEvent.DataReceived, (payload, participant) => {
+        if (participant?.isLocal) return; // Prevent local loopback echo
         try {
           const decoder = new TextDecoder();
           const str = decoder.decode(payload);
@@ -303,28 +370,28 @@ export function useLiveKit() {
           recognition.interimResults = true;
           recognition.lang = 'en-US';
 
+          let currentSpeechTurnId = `patient-speech-${Date.now()}`;
           recognition.onresult = (e) => {
+            let fullText = '';
+            let isFinal = false;
+
             for (let i = e.resultIndex; i < e.results.length; ++i) {
               const res = e.results[i];
-              const transcript = res[0]?.transcript?.trim();
-              if (transcript) {
-                appendTranscript('Patient', transcript, 'user', res.isFinal, `user-stt-${i}`);
-                if (res.isFinal && roomRef.current && roomRef.current.state === 'connected') {
-                  try {
-                    const dataPayload = new TextEncoder().encode(
-                      JSON.stringify({
-                        type: 'transcript',
-                        speaker: 'Patient',
-                        text: transcript,
-                        final: true,
-                      })
-                    );
-                    roomRef.current.localParticipant.publishData(dataPayload, { reliable: true });
-                  } catch (pubErr) {
-                    console.warn('User transcript publish note:', pubErr);
-                  }
-                }
+              if (res[0]?.transcript) {
+                fullText += (fullText ? ' ' : '') + res[0].transcript.trim();
               }
+              if (res.isFinal) {
+                isFinal = true;
+              }
+            }
+
+            if (fullText.trim()) {
+              appendTranscript('Patient', fullText.trim(), 'user', isFinal, currentSpeechTurnId);
+            }
+
+            if (isFinal) {
+              // Rotate turn ID for subsequent utterance
+              currentSpeechTurnId = `patient-speech-${Date.now()}`;
             }
           };
 
