@@ -10,7 +10,7 @@ import {
   History,
   ChevronUp,
 } from 'lucide-react';
-import { AgentAudioVisualizerGrid } from './agents-ui/agent-audio-visualizer-grid';
+import { AgentAudioVisualizerAura } from './agents-ui/agent-audio-visualizer-aura';
 
 export default function AgentSidePanel({ livekit }) {
   const [inputText, setInputText] = useState('');
@@ -63,19 +63,19 @@ export default function AgentSidePanel({ livekit }) {
   return (
     <div className="flex flex-col h-full bg-[#000000] border-l border-[#222222] select-none">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-[#222222] bg-[#000000] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-[#141414] border border-[#2a2a2a] flex items-center justify-center text-white font-bold text-sm">
+      <div className="px-6 py-4.5 border-b border-[#222222] bg-[#000000] flex items-center justify-between">
+        <div className="flex items-center gap-3.5">
+          <div className="w-9 h-9 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center text-white font-bold text-sm shadow-inner">
             M
           </div>
           <div>
-            <h3 className="font-bold text-base text-white tracking-tight">Mia</h3>
-            <p className="text-xs text-zinc-400">AI Receptionist</p>
+            <h3 className="font-bold text-base text-white tracking-tight leading-none">Mia</h3>
+            <p className="text-xs text-zinc-400 mt-1 font-medium">AI Clinical Receptionist</p>
           </div>
         </div>
 
         <div>
-          <span className="text-xs font-medium px-2.5 py-1 rounded bg-[#111111] border border-[#262626] text-zinc-300 flex items-center gap-2">
+          <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-[#111111] border border-[#262626] text-zinc-300 flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
                 isConnected
@@ -91,18 +91,16 @@ export default function AgentSidePanel({ livekit }) {
       </div>
 
       {/* Visualizer & Call Button Card */}
-      <div className="p-6 border-b border-[#222222] bg-[#050505] flex flex-col items-center gap-4">
-        {/* Purple Audio Visualizer Grid */}
-        <div className="py-2">
-          <AgentAudioVisualizerGrid
-            size="xl"
+      <div className="p-6 sm:p-7 border-b border-[#222222] bg-[#050505] flex flex-col items-center gap-5">
+        {/* LiveKit Agent Audio Visualizer Aura (Unicorn Studio WebGL Shader) */}
+        <div className="py-1 flex items-center justify-center relative w-full aspect-square max-w-[240px] max-h-[240px]">
+          <AgentAudioVisualizerAura
+            size="lg"
             color="#C04CFA"
-            rowCount={15}
-            columnCount={15}
-            radius={60}
+            colorShift={0.12}
             state={agentState}
-            audioLevel={agentAudioLevel}
-            className="mx-auto aspect-square size-auto h-full gap-0 p-2 *:size-2"
+            volume={agentAudioLevel / 100}
+            className="mx-auto"
           />
         </div>
 

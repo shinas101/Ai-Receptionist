@@ -183,49 +183,140 @@ export default function LiveCalendar({
 
   return (
     <div className="flex flex-col h-full bg-[#000000] text-white select-none relative">
-      {/* Top Header & Doctor Filter */}
-      <div className="px-6 py-4 border-b border-[#222222] bg-[#000000] flex flex-wrap items-center justify-between gap-4">
+      {/* Top Header & Month Navigation */}
+      <div className="px-6 sm:px-8 py-5 border-b border-[#222222] bg-[#000000] flex flex-wrap items-center justify-between gap-4">
         {/* Month Selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={prevMonth}
-            className="p-1.5 rounded text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+            className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-[#262626] transition-colors"
             title="Previous Month"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h2 className="font-bold text-lg text-white min-w-[160px] text-center tracking-tight">
+          <h2 className="font-bold text-xl text-white min-w-[180px] text-center tracking-tight">
             {monthName}
           </h2>
           <button
             onClick={nextMonth}
-            className="p-1.5 rounded text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+            className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-[#262626] transition-colors"
             title="Next Month"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
           <button
             onClick={goToday}
-            className="btn-dark text-xs py-1.5 px-3 ml-2 font-medium"
+            className="btn-dark text-xs py-1.5 px-3.5 ml-2 font-medium"
           >
             Today
           </button>
         </div>
 
-        {/* Doctor Filter Dropdown */}
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedDoctorId}
-            onChange={(e) => onChangeDoctor(e.target.value)}
-            className="v-input text-sm py-1.5 px-3 w-[180px] bg-[#0a0a0a] border-[#262626] text-white rounded-md"
+        {/* Selected Date Quick Badge */}
+        <div className="text-xs font-mono text-zinc-400 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-purple-400" />
+          <span>Selected: {selectedDate || todayStr}</span>
+        </div>
+      </div>
+
+      {/* Prominent Doctors Provider Bar ("make doctors list little big") */}
+      <div className="px-6 sm:px-8 py-4.5 bg-[#070707] border-b border-[#222222]">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-semibold flex items-center gap-2">
+            <Stethoscope className="w-4 h-4 text-purple-400" />
+            <span>Clinic Specialists & Doctors</span>
+          </div>
+          <span className="text-xs text-zinc-500 font-mono">
+            {selectedDoctorId ? 'Filtered by Doctor' : 'All Specialists'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {/* All Doctors Card */}
+          <button
+            type="button"
+            onClick={() => onChangeDoctor('')}
+            className={`p-3.5 rounded-xl border text-left transition-all duration-150 flex items-center justify-between ${
+              !selectedDoctorId
+                ? 'bg-[#151515] border-white text-white shadow-lg ring-1 ring-white/20'
+                : 'bg-[#0d0d0d] border-[#242424] text-zinc-300 hover:border-[#3a3a3a] hover:bg-[#141414]'
+            }`}
           >
-            <option value="">All Doctors</option>
-            {doctors.map((doc) => (
-              <option key={doc.id} value={doc.id}>
-                {doc.name}
-              </option>
-            ))}
-          </select>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-[#1c1c1c] border border-[#2e2e2e] flex items-center justify-center font-bold text-xs text-white">
+                ALL
+              </div>
+              <div>
+                <div className="font-semibold text-sm text-white">All Doctors</div>
+                <div className="text-xs text-zinc-400">All Clinic Rooms</div>
+              </div>
+            </div>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#1c1c1c] font-mono text-zinc-400 border border-[#2a2a2a]">
+              {appointments.length}
+            </span>
+          </button>
+
+          {/* Individual Doctor Cards */}
+          {doctors.map((doc) => {
+            const isDocSelected = selectedDoctorId === doc.id;
+            const initials = doc.name
+              .replace('Dr. ', '')
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .slice(0, 2);
+
+            const docApptsCount = appointments.filter((a) => a.doctor_id === doc.id).length;
+
+            return (
+              <button
+                key={doc.id}
+                type="button"
+                onClick={() => onChangeDoctor(doc.id)}
+                className={`p-3.5 rounded-xl border text-left transition-all duration-150 flex items-center justify-between ${
+                  isDocSelected
+                    ? 'bg-[#151515] border-purple-400 text-white shadow-lg ring-1 ring-purple-500/30'
+                    : 'bg-[#0d0d0d] border-[#242424] text-zinc-300 hover:border-[#3a3a3a] hover:bg-[#141414]'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`w-9 h-9 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0 ${
+                      isDocSelected
+                        ? 'bg-purple-950/70 border-purple-600 text-purple-200'
+                        : 'bg-[#181818] border-[#2c2c2c] text-zinc-300'
+                    }`}
+                  >
+                    {initials}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm text-white truncate">
+                      {doc.name}
+                    </div>
+                    <div className="text-xs text-zinc-400 flex items-center gap-1.5 truncate">
+                      <span>{doc.specialty}</span>
+                      {doc.room_number && (
+                        <>
+                          <span className="text-zinc-600">•</span>
+                          <span className="font-mono text-[11px] text-zinc-400">Rm {doc.room_number}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <span
+                  className={`text-xs px-2.5 py-0.5 rounded-full font-mono shrink-0 ml-2 border ${
+                    isDocSelected
+                      ? 'bg-purple-950/60 border-purple-800 text-purple-300'
+                      : 'bg-[#181818] border-[#2a2a2a] text-zinc-400'
+                  }`}
+                >
+                  {docApptsCount}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
