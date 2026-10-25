@@ -297,8 +297,9 @@ def create_app():
     app = web.Application()
 
     # Serve static frontend assets if built
-    if os.path.exists(os.path.join(FRONTEND_DIST, "assets")):
-        app.router.add_static("/assets", os.path.join(FRONTEND_DIST, "assets"))
+    assets_dir = os.path.join(FRONTEND_DIST, "assets")
+    os.makedirs(assets_dir, exist_ok=True)
+    app.router.add_static("/assets", assets_dir)
     if os.path.exists(os.path.join(FRONTEND_DIST, "icons.svg")):
         app.router.add_get("/icons.svg", lambda req: web.FileResponse(os.path.join(FRONTEND_DIST, "icons.svg")))
     app.router.add_get("/favicon.ico", favicon_handler)

@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Mic,
   MicOff,
-  Phone,
   PhoneOff,
   Send,
   Trash2,
@@ -168,7 +167,11 @@ export default function AgentSidePanel({ livekit }) {
           className="flex-1 p-5 overflow-y-auto space-y-3.5 text-sm leading-relaxed select-text"
         >
           {transcripts.map((item) => {
-            const isMia = item.speaker === 'MIA';
+            const isMia =
+              item.speaker?.toUpperCase() === 'MIA' ||
+              item.speaker?.toLowerCase().includes('agent') ||
+              item.speaker?.toLowerCase().includes('receptionist') ||
+              item.type === 'agent';
 
             return (
               <div

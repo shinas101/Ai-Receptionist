@@ -1,3 +1,9 @@
+import asyncio
+import json
+import logging
+import os
+import time
+
 from dotenv import load_dotenv
 
 from livekit import agents
@@ -9,14 +15,14 @@ from livekit.agents import (
     room_io,
     TurnHandlingOptions,
 )
+from livekit.agents.voice import events
 from livekit.plugins import ai_coustics, silero
 
 from app.tools import AppointmentTools
 from app.memory.db import init_db, close_db
 from app.memory.tools import MemoryTools
 
-
-import os
+logger = logging.getLogger("ai-receptionist")
 load_dotenv(".env")
 
 NUM_IDLE_PROCESSES = int(os.getenv("NUM_IDLE_PROCESSES", "1"))
@@ -160,6 +166,56 @@ async def my_agent(ctx: agents.JobContext):
         ),
     )
 
+    # Helper to reliably publish live transcription events to client room
+    async def _safe_publish_data(payload_dict: dict):
+        try:
+            if ctx.room and ctx.room.isconnected():
+                data_bytes = json.dumps(payload_dict).encode("utf-8")
+                await ctx.room.local_participant.publish_data(
+                    data_bytes,
+                    reliable=True,
+                    topic="transcript",
+                )
+        except Exception as e:
+            logger.warning("Failed to publish transcript data: %s", e)
+
+    # Broadcast real-time speech transcription from caller / patient
+    @session.on("user_input_transcribed")
+    def _on_user_input_transcribed(ev: events.UserInputTranscribedEvent):
+        if ev.transcript and ev.transcript.strip():
+            asyncio.create_task(
+                _safe_publish_data({
+                    "type": "transcript",
+                    "speaker": "Patient",
+                    "text": ev.transcript.strip(),
+                    "final": bool(ev.is_final),
+                    "id": ev.item_id or f"user-{int(time.time()*1000)}",
+                })
+            )
+
+    # Broadcast conversational items (Mia replies and patient utterances)
+    @session.on("conversation_item_added")
+    def _on_conversation_item_added(ev: events.ConversationItemAddedEvent):
+        item = ev.item
+        text = getattr(item, "text_content", None)
+        if not text and hasattr(item, "content"):
+            if isinstance(item.content, str):
+                text = item.content
+            elif isinstance(item.content, list):
+                text = " ".join([c for c in item.content if isinstance(c, str)])
+        if text and str(text).strip():
+            role = getattr(item, "role", "")
+            speaker = "MIA" if role == "assistant" else "Patient"
+            asyncio.create_task(
+                _safe_publish_data({
+                    "type": "transcript",
+                    "speaker": speaker,
+                    "text": str(text).strip(),
+                    "final": True,
+                    "id": getattr(item, "id", None) or f"conv-{int(time.time()*1000)}",
+                })
+            )
+
     await session.start(
         room=ctx.room,
         agent=Assistant(),
@@ -170,15 +226,29 @@ async def my_agent(ctx: agents.JobContext):
                     model=ai_coustics.EnhancerModel.QUAIL_VF_S,
                 ),
             ),
+            text_output=room_io.TextOutputOptions(
+                sync_transcription=True,
+            ),
         ),
     )
 
-    await session.generate_reply(
-        instructions=(
-            "Say: Hello! Thank you for calling ABC Health Care. My name is Mia. "
-            "How can I assist you with your appointment today?"
-        )
+    greeting_text = (
+        "Hello! Thank you for calling ABC Health Care. My name is Mia. "
+        "How can I assist you with your appointment today?"
     )
+
+    # Broadcast greeting transcript so dialogue shows it immediately
+    asyncio.create_task(
+        _safe_publish_data({
+            "type": "transcript",
+            "speaker": "MIA",
+            "text": greeting_text,
+            "final": True,
+            "id": f"greeting-{int(time.time()*1000)}",
+        })
+    )
+
+    await session.generate_reply(instructions=f"Say: {greeting_text}")
 
 
 if __name__ == "__main__":

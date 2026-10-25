@@ -27,19 +27,50 @@ export function useLiveKit() {
   const animFrameRef = useRef(null);
   const audioElementRef = useRef(null);
   const localMicStreamRef = useRef(null);
+  const speechRecognitionRef = useRef(null);
 
-  // Append a clean transcript entry
-  const appendTranscript = useCallback((speaker, text, type = 'chat') => {
-    setTranscripts((prev) => [
-      ...prev,
-      {
-        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        speaker,
-        text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type,
-      },
-    ]);
+  // Append or update a clean transcript entry with in-place streaming and de-duplication
+  const appendTranscript = useCallback((rawSpeaker, text, type = 'chat', isFinal = true, id = null) => {
+    if (!text || !text.trim()) return;
+    const cleanText = text.trim();
+    const lower = (rawSpeaker || '').toLowerCase();
+    const isAgent = lower.includes('mia') || lower.includes('agent') || lower.includes('receptionist') || lower.includes('assistant');
+    const speaker = isAgent ? 'MIA' : 'Patient';
+    const msgType = isAgent ? 'agent' : 'user';
+
+    setTranscripts((prev) => {
+      // If updating an existing streaming/partial message
+      if (id) {
+        const existingIdx = prev.findIndex((m) => m.id === id);
+        if (existingIdx !== -1) {
+          const updated = [...prev];
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            text: cleanText,
+            final: isFinal,
+          };
+          return updated;
+        }
+      }
+
+      // Avoid consecutive duplicate messages from the same speaker
+      const last = prev[prev.length - 1];
+      if (last && last.speaker === speaker && last.text.toLowerCase() === cleanText.toLowerCase()) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          id: id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          speaker,
+          text: cleanText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: msgType,
+          final: isFinal,
+        },
+      ];
+    });
   }, []);
 
   // Web Audio analyzer for remote agent audio
@@ -162,18 +193,78 @@ export function useLiveKit() {
         track.detach();
       });
 
-      // Handle Data Packets / Transcripts
+      // 1. LiveKit Native Transcription Segments (emitted by STT and agent audio)
+      room.on(RoomEvent.TranscriptionReceived, (segments, participant) => {
+        if (!segments || !Array.isArray(segments)) return;
+        for (const seg of segments) {
+          if (seg.text && seg.text.trim()) {
+            const isAgent =
+              participant?.isAgent ||
+              participant?.identity?.toLowerCase().includes('agent') ||
+              participant?.identity?.toLowerCase().includes('mia');
+            const speaker = isAgent ? 'MIA' : 'Patient';
+            appendTranscript(speaker, seg.text.trim(), isAgent ? 'agent' : 'user', seg.final, seg.id);
+          }
+        }
+      });
+
+      // 2. Modern LiveKit TextStream transcription (lk.transcription topic)
+      try {
+        room.registerTextStreamHandler('lk.transcription', async (reader, { identity }) => {
+          const isAgent =
+            identity?.toLowerCase().includes('agent') ||
+            identity?.toLowerCase().includes('mia') ||
+            identity?.toLowerCase().includes('receptionist');
+          const speaker = isAgent ? 'MIA' : 'Patient';
+          const segmentId = reader.info?.attributes?.['lk.transcription_segment_id'] || `stream-${Date.now()}`;
+
+          let accumulated = '';
+          for await (const chunk of reader) {
+            accumulated += chunk;
+            if (accumulated.trim()) {
+              appendTranscript(speaker, accumulated.trim(), isAgent ? 'agent' : 'user', false, segmentId);
+            }
+          }
+          if (accumulated.trim()) {
+            appendTranscript(speaker, accumulated.trim(), isAgent ? 'agent' : 'user', true, segmentId);
+          }
+        });
+      } catch (err) {
+        console.warn('TextStreamHandler registration note:', err);
+      }
+
+      // 3. Native LiveKit Chat Messages
+      room.on(RoomEvent.ChatMessage, (msg, participant) => {
+        if (msg && msg.message) {
+          const isAgent =
+            participant?.isAgent ||
+            participant?.identity?.toLowerCase().includes('agent') ||
+            participant?.identity?.toLowerCase().includes('mia');
+          const speaker = isAgent ? 'MIA' : 'Patient';
+          appendTranscript(speaker, msg.message, isAgent ? 'agent' : 'user', true, msg.id);
+        }
+      });
+
+      // 4. Reliable Data Channel Packets (from agent.py broadcast)
       room.on(RoomEvent.DataReceived, (payload, participant) => {
         try {
           const decoder = new TextDecoder();
           const str = decoder.decode(payload);
           const data = JSON.parse(str);
-          if (data.text) {
-            appendTranscript(data.speaker || participant?.identity || 'MIA', data.text);
+          if (data && (data.text || data.transcript)) {
+            const text = (data.text || data.transcript).trim();
+            const rawSpeaker = data.speaker || participant?.identity || 'MIA';
+            appendTranscript(rawSpeaker, text, 'chat', data.final !== false, data.id);
           }
         } catch {
-          const text = new TextDecoder().decode(payload);
-          appendTranscript(participant?.identity || 'MIA', text);
+          try {
+            const text = new TextDecoder().decode(payload).trim();
+            if (text) {
+              appendTranscript(participant?.identity || 'MIA', text, 'chat');
+            }
+          } catch (e) {
+            console.warn('Data decode note:', e);
+          }
         }
       });
 
@@ -201,6 +292,61 @@ export function useLiveKit() {
 
       setConnectionState('connected');
       setAgentState('listening');
+
+      // 5. Browser-side Real-time Speech Recognition (instant client-side transcription fallback)
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+
+          recognition.onresult = (e) => {
+            for (let i = e.resultIndex; i < e.results.length; ++i) {
+              const res = e.results[i];
+              const transcript = res[0]?.transcript?.trim();
+              if (transcript) {
+                appendTranscript('Patient', transcript, 'user', res.isFinal, `user-stt-${i}`);
+                if (res.isFinal && roomRef.current && roomRef.current.state === 'connected') {
+                  try {
+                    const dataPayload = new TextEncoder().encode(
+                      JSON.stringify({
+                        type: 'transcript',
+                        speaker: 'Patient',
+                        text: transcript,
+                        final: true,
+                      })
+                    );
+                    roomRef.current.localParticipant.publishData(dataPayload, { reliable: true });
+                  } catch (pubErr) {
+                    console.warn('User transcript publish note:', pubErr);
+                  }
+                }
+              }
+            }
+          };
+
+          recognition.onerror = (err) => {
+            if (err.error !== 'no-speech') {
+              console.warn('Web Speech API note:', err.error);
+            }
+          };
+
+          recognition.onend = () => {
+            if (roomRef.current && roomRef.current.state === 'connected' && !isMuted) {
+              try {
+                recognition.start();
+              } catch {}
+            }
+          };
+
+          recognition.start();
+          speechRecognitionRef.current = recognition;
+        } catch (sttErr) {
+          console.warn('SpeechRecognition initialization note:', sttErr);
+        }
+      }
 
       // Local mic level monitoring
       try {
@@ -242,10 +388,16 @@ export function useLiveKit() {
       });
       appendTranscript('MIA', 'Hello! Thank you for calling ABC Health Care. My name is Mia. How can I assist you with your appointment today?', 'agent');
     }
-  }, [connectionState, appendTranscript, setupAudioAnalysis]);
+  }, [connectionState, appendTranscript, setupAudioAnalysis, isMuted]);
 
   // Disconnect
   const disconnect = useCallback(() => {
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.abort();
+      } catch {}
+      speechRecognitionRef.current = null;
+    }
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
     }
@@ -270,8 +422,17 @@ export function useLiveKit() {
 
   // Toggle Mute
   const toggleMute = useCallback(() => {
+    const nextMute = !isMuted;
+    if (speechRecognitionRef.current) {
+      try {
+        if (nextMute) {
+          speechRecognitionRef.current.stop();
+        } else {
+          speechRecognitionRef.current.start();
+        }
+      } catch {}
+    }
     if (roomRef.current && roomRef.current.localParticipant) {
-      const nextMute = !isMuted;
       roomRef.current.localParticipant.setMicrophoneEnabled(!nextMute);
       setIsMuted(nextMute);
     } else {
@@ -281,13 +442,13 @@ export function useLiveKit() {
 
   // Send inquiry
   const sendInquiry = useCallback(async (text) => {
-    appendTranscript('PATIENT', text, 'user');
+    appendTranscript('Patient', text, 'user', true);
     setAgentState('thinking');
 
     // If connected to room with data channel, publish
     if (roomRef.current && roomRef.current.state === 'connected') {
       try {
-        const payload = new TextEncoder().encode(JSON.stringify({ text, speaker: 'PATIENT' }));
+        const payload = new TextEncoder().encode(JSON.stringify({ text, speaker: 'Patient', type: 'transcript', final: true }));
         await roomRef.current.localParticipant.publishData(payload, { reliable: true });
       } catch (e) {
         console.warn('Data publish note:', e);
@@ -313,7 +474,7 @@ export function useLiveKit() {
         reply = "If you are experiencing a medical emergency, please hang up and call 112, 108, or 911 immediately, or go to the nearest emergency room.";
       }
 
-      appendTranscript('MIA', reply, 'agent');
+      appendTranscript('MIA', reply, 'agent', true);
 
       // Speech synthesis fallback so the user actually HEARS audio even if LiveKit cloud agent is silent
       if ('speechSynthesis' in window && !audioElementRef.current?.srcObject) {
@@ -346,6 +507,11 @@ export function useLiveKit() {
 
   useEffect(() => {
     return () => {
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.abort();
+        } catch {}
+      }
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (roomRef.current) roomRef.current.disconnect();
     };
