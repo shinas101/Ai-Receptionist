@@ -1,5 +1,5 @@
 // API Client for ABC Health Care Backend Services
-const API_BASE = '/api';
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
 
 /**
  * Handle API responses with robust error and fallback support

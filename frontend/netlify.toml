@@ -1,0 +1,27 @@
+# ==============================================================================
+# Netlify Deployment Configuration for React + Vite Clinical Dashboard
+# ==============================================================================
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA Fallback: Route all subpaths to index.html with HTTP 200
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Cache static hashed assets for 1 year
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
