@@ -229,6 +229,8 @@ async def my_agent(ctx: agents.JobContext):
             text_output=room_io.TextOutputOptions(
                 sync_transcription=True,
             ),
+            close_on_disconnect=True,
+            delete_room_on_close=True,
         ),
     )
 

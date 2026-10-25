@@ -143,7 +143,8 @@ export function useLiveKit() {
     }
 
     try {
-      const tokenRes = await api.getToken('receptionist-room', userName);
+      const uniqueRoom = `consultation-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`;
+      const tokenRes = await api.getToken(uniqueRoom, userName);
 
       if (!tokenRes || !tokenRes.token) {
         throw new Error(tokenRes?.error || 'Failed to obtain LiveKit token');
@@ -455,54 +456,56 @@ export function useLiveKit() {
       }
     }
 
-    // Fallback response if agent hasn't replied via audio channel
-    setTimeout(() => {
-      setIsAgentSpeaking(true);
-      setAgentState('speaking');
-      setAgentAudioLevel(65);
+    // Offline fallback response ONLY if NOT connected to live LiveKit agent room
+    if (!roomRef.current || roomRef.current.state !== 'connected') {
+      setTimeout(() => {
+        setIsAgentSpeaking(true);
+        setAgentState('speaking');
+        setAgentAudioLevel(65);
 
-      let reply = "I would be happy to help with that. Could you please provide your phone number so I can pull up your records?";
-      const lower = text.toLowerCase();
+        let reply = "I would be happy to help with that. Could you please provide your phone number so I can pull up your records?";
+        const lower = text.toLowerCase();
 
-      if (lower.includes('dr. rahul') || lower.includes('general')) {
-        reply = "Dr. Rahul Nair has slots open tomorrow at 10:00 AM and 11:30 AM in Room 102. Would you like me to book the 10:00 AM slot for you?";
-      } else if (lower.includes('dr. priya') || lower.includes('skin') || lower.includes('dermatol')) {
-        reply = "Dr. Priya Menon is available on Thursday at 2:00 PM in Room 205. Shall I reserve that consultation?";
-      } else if (lower.includes('dr. anil') || lower.includes('heart') || lower.includes('cardiol')) {
-        reply = "Dr. Anil Kumar has openings this Friday starting at 9:30 AM. What time works best for your schedule?";
-      } else if (lower.includes('emergency') || lower.includes('chest pain') || lower.includes('bleeding')) {
-        reply = "If you are experiencing a medical emergency, please hang up and call 112, 108, or 911 immediately, or go to the nearest emergency room.";
-      }
+        if (lower.includes('dr. rahul') || lower.includes('general')) {
+          reply = "Dr. Rahul Nair has slots open tomorrow at 10:00 AM and 11:30 AM in Room 102. Would you like me to book the 10:00 AM slot for you?";
+        } else if (lower.includes('dr. priya') || lower.includes('skin') || lower.includes('dermatol')) {
+          reply = "Dr. Priya Menon is available on Thursday at 2:00 PM in Room 205. Shall I reserve that consultation?";
+        } else if (lower.includes('dr. anil') || lower.includes('heart') || lower.includes('cardiol')) {
+          reply = "Dr. Anil Kumar has openings this Friday starting at 9:30 AM. What time works best for your schedule?";
+        } else if (lower.includes('emergency') || lower.includes('chest pain') || lower.includes('bleeding')) {
+          reply = "If you are experiencing a medical emergency, please hang up and call 112, 108, or 911 immediately, or go to the nearest emergency room.";
+        }
 
-      appendTranscript('MIA', reply, 'agent', true);
+        appendTranscript('MIA', reply, 'agent', true);
 
-      // Speech synthesis fallback so the user actually HEARS audio even if LiveKit cloud agent is silent
-      if ('speechSynthesis' in window && !audioElementRef.current?.srcObject) {
-        try {
-          const utter = new SpeechSynthesisUtterance(reply);
-          utter.rate = 1.0;
-          utter.pitch = 1.05;
-          utter.onend = () => {
-            setIsAgentSpeaking(false);
-            setAgentState('listening');
-            setAgentAudioLevel(0);
-          };
-          window.speechSynthesis.speak(utter);
-        } catch {
+        // Speech synthesis fallback so the user actually HEARS audio in offline demo
+        if ('speechSynthesis' in window && !audioElementRef.current?.srcObject) {
+          try {
+            const utter = new SpeechSynthesisUtterance(reply);
+            utter.rate = 1.0;
+            utter.pitch = 1.05;
+            utter.onend = () => {
+              setIsAgentSpeaking(false);
+              setAgentState('listening');
+              setAgentAudioLevel(0);
+            };
+            window.speechSynthesis.speak(utter);
+          } catch {
+            setTimeout(() => {
+              setIsAgentSpeaking(false);
+              setAgentState('listening');
+              setAgentAudioLevel(0);
+            }, 3500);
+          }
+        } else {
           setTimeout(() => {
             setIsAgentSpeaking(false);
             setAgentState('listening');
             setAgentAudioLevel(0);
           }, 3500);
         }
-      } else {
-        setTimeout(() => {
-          setIsAgentSpeaking(false);
-          setAgentState('listening');
-          setAgentAudioLevel(0);
-        }, 3500);
-      }
-    }, 800);
+      }, 800);
+    }
   }, [appendTranscript]);
 
   useEffect(() => {

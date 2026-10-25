@@ -4,7 +4,13 @@ import uuid
 import json
 from aiohttp import web
 from dotenv import load_dotenv
-from livekit.api import AccessToken, VideoGrants, LiveKitAPI, CreateAgentDispatchRequest
+from livekit.api import (
+    AccessToken,
+    VideoGrants,
+    LiveKitAPI,
+    CreateAgentDispatchRequest,
+    ListParticipantsRequest,
+)
 
 from app.settings import get_all_settings, set_setting, verify_admin_pin
 from app.memory.service import (
@@ -85,15 +91,36 @@ async def get_token(request: web.Request):
 
     jwt = token.to_jwt()
 
-    # Automatically dispatch agent to the room
+    # Automatically dispatch agent to the room ONLY if no agent is already present or dispatched
     try:
         lk = LiveKitAPI(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
-        await lk.agent_dispatch.create_dispatch(
-            CreateAgentDispatchRequest(
-                agent_name="my-agent",
-                room=room,
+        should_dispatch = True
+        try:
+            parts = await lk.room.list_participants(ListParticipantsRequest(room=room))
+            for p in parts.participants:
+                p_id = (p.identity or "").lower()
+                p_name = (p.name or "").lower()
+                if "agent" in p_id or "mia" in p_name or p.kind == 2:
+                    should_dispatch = False
+                    break
+        except Exception:
+            pass
+
+        if should_dispatch:
+            try:
+                dispatches = await lk.agent_dispatch.list_dispatch(room)
+                if len(dispatches) > 0:
+                    should_dispatch = False
+            except Exception:
+                pass
+
+        if should_dispatch:
+            await lk.agent_dispatch.create_dispatch(
+                CreateAgentDispatchRequest(
+                    agent_name="my-agent",
+                    room=room,
+                )
             )
-        )
         await lk.aclose()
     except Exception as e:
         print("Dispatch note:", e)
