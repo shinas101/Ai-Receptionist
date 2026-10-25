@@ -591,93 +591,89 @@ export default function LiveCalendar({
         </div>
       )}
 
-      {/* DAY BOOKINGS MODAL - REDESIGNED SPATIOUS & ELEGANT */}
+      {/* DAY BOOKINGS MODAL - EXPANSIVE, BIG & READABLE */}
       {activeDayModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 sm:p-6 lg:p-8 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 lg:p-8 animate-in fade-in duration-200"
           onClick={() => setActiveDayModal(null)}
         >
           <div
-            className={`w-full ${
-              modalAppointments.length > 1 ? 'max-w-3xl' : 'max-w-xl'
-            } bg-[#0b0b0e] border border-[#262630] rounded-2xl shadow-[0_25px_70px_-15px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col max-h-[85vh] transition-all`}
+            className="w-[95vw] max-w-4xl lg:max-w-5xl bg-[#0a0a0e] border border-[#262634] rounded-2xl sm:rounded-3xl shadow-[0_30px_90px_-20px_rgba(0,0,0,0.98)] overflow-hidden flex flex-col min-h-[520px] max-h-[90vh] transition-all"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header: Spacious, elegant clinical title & controls */}
-            <div className="px-6 sm:px-7 py-5 border-b border-[#202028] bg-gradient-to-r from-[#0d0d12] via-[#09090c] to-[#0d0d12] flex items-center justify-between gap-4 shrink-0">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-purple-950/40 border border-purple-800/40 flex items-center justify-center text-purple-400 shrink-0 shadow-inner">
-                  <CalendarIcon className="w-5 h-5" />
+            {/* Header: Spacious, prominent clinical title & navigation */}
+            <div className="px-6 sm:px-8 lg:px-10 py-6 border-b border-[#22222e] bg-gradient-to-r from-[#0e0e14] via-[#0a0a0f] to-[#0e0e14] flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-purple-950/50 border border-purple-800/60 flex items-center justify-center text-purple-400 shrink-0 shadow-lg">
+                  <CalendarIcon className="w-6 h-6" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <h3 className="font-bold text-lg sm:text-xl text-white tracking-tight truncate">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="font-extrabold text-xl sm:text-2xl lg:text-3xl text-white tracking-tight truncate">
                       {formatFullDate(activeDayModal)}
                     </h3>
                     {getRelativeDateLabel(activeDayModal) && (
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-950/70 text-purple-300 border border-purple-800/60 font-mono">
+                      <span className="text-xs sm:text-sm font-semibold px-3 py-1 rounded-full bg-purple-900/60 text-purple-200 border border-purple-700/60 font-mono shadow-sm">
                         {getRelativeDateLabel(activeDayModal)}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-zinc-400 font-mono mt-1 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  <div className="text-xs sm:text-sm text-zinc-400 font-mono mt-1.5 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-400" />
                     <span>
-                      {modalAppointments.length} scheduled consultation{modalAppointments.length !== 1 ? 's' : ''}
+                      {modalAppointments.length} confirmed consultation{modalAppointments.length !== 1 ? 's' : ''} on clinic schedule
                     </span>
                   </div>
                 </div>
               </div>
 
               {/* Day Switcher Controls */}
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="flex items-center p-0.5 rounded-lg bg-[#141418] border border-[#24242c]">
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex items-center p-1 rounded-xl bg-[#14141c] border border-[#282836]">
                   <button
                     onClick={handlePrevDayModal}
-                    className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                    className="p-2 sm:px-3 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-xs font-semibold flex items-center gap-1"
                     title="Previous Day"
                   >
                     <ChevronLeft className="w-4 h-4" />
+                    <span className="hidden md:inline">Prev Day</span>
                   </button>
-                  <div className="w-px h-4 bg-zinc-800 mx-0.5" />
+                  <div className="w-px h-5 bg-zinc-800 mx-1" />
                   <button
                     onClick={handleNextDayModal}
-                    className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                    className="p-2 sm:px-3 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-xs font-semibold flex items-center gap-1"
                     title="Next Day"
                   >
+                    <span className="hidden md:inline">Next Day</span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
                 <button
                   onClick={() => setActiveDayModal(null)}
-                  className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 border border-transparent hover:border-zinc-700 transition-colors"
+                  className="p-2.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 border border-transparent hover:border-zinc-700 transition-colors"
                   title="Close (Esc)"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
             </div>
 
-            {/* Content: Clean, spacious, beautifully formatted appointment cards */}
-            <div className="p-6 sm:p-7 overflow-y-auto flex-1 select-text bg-[#070709] space-y-4">
+            {/* Content: Expansive, clean, readable appointment details */}
+            <div className="p-6 sm:p-8 lg:p-10 overflow-y-auto flex-1 select-text bg-[#07070a] space-y-6">
               {modalAppointments.length === 0 ? (
-                <div className="py-16 text-center px-4 space-y-3">
-                  <div className="w-12 h-12 mx-auto rounded-2xl bg-[#121216] border border-[#26262e] flex items-center justify-center text-zinc-500 shadow-inner">
-                    <CalendarCheck className="w-6 h-6 text-zinc-400" />
+                <div className="py-20 text-center px-4 space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-3xl bg-[#12121a] border border-[#262636] flex items-center justify-center text-zinc-500 shadow-xl">
+                    <CalendarCheck className="w-8 h-8 text-zinc-400" />
                   </div>
-                  <div className="text-base font-semibold text-white">
+                  <div className="text-lg sm:text-xl font-bold text-white">
                     No Consultations Scheduled
                   </div>
-                  <p className="text-xs text-zinc-400 max-w-sm mx-auto font-mono leading-relaxed">
-                    No appointments are booked for {formatFullDate(activeDayModal)}. Patients can book via Mia or the reception line.
+                  <p className="text-sm text-zinc-400 max-w-md mx-auto font-mono leading-relaxed">
+                    There are no patient visits booked for {formatFullDate(activeDayModal)}. Mia is available to schedule open slots.
                   </p>
                 </div>
               ) : (
-                <div
-                  className={`grid gap-5 ${
-                    modalAppointments.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'
-                  }`}
-                >
+                <div className="space-y-6">
                   {modalAppointments.map((apt) => {
                     const start = apt.start_time
                       ? new Date(apt.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -691,80 +687,96 @@ export default function LiveCalendar({
                     return (
                       <div
                         key={apt.id}
-                        className="p-5 sm:p-6 rounded-2xl bg-[#0f0f14] border border-[#242430] hover:border-purple-600/40 transition-all duration-200 shadow-lg flex flex-col justify-between space-y-4"
+                        className="p-6 sm:p-8 rounded-2xl bg-[#0e0e14] border border-[#242434] hover:border-purple-600/50 transition-all duration-200 shadow-xl space-y-6"
                       >
-                        {/* Top: Time Pill + Status Badge */}
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181822] border border-[#2a2a38] text-purple-200 font-mono text-xs sm:text-sm font-semibold shadow-inner">
-                            <Clock className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                        {/* Top Bar: Large Time Pill + Status Badge */}
+                        <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[#1c1c28]">
+                          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[#161622] border border-[#2c2c3c] text-purple-200 font-mono text-sm sm:text-base font-bold shadow-inner">
+                            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 shrink-0" />
                             <span>{start} – {end}</span>
                           </div>
 
                           <div
-                            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider border shadow-sm ${
                               isConfirmed
-                                ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800/50'
-                                : 'bg-purple-950/50 text-purple-300 border-purple-800/50'
+                                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60'
+                                : 'bg-purple-950/60 text-purple-300 border-purple-800/60'
                             }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
+                              className={`w-2 h-2 rounded-full ${
                                 isConfirmed ? 'bg-emerald-400' : 'bg-purple-400'
                               } animate-pulse`}
                             />
-                            <span className="capitalize">{apt.status || 'Scheduled'}</span>
+                            <span>{apt.status || 'Scheduled'}</span>
                           </div>
                         </div>
 
-                        {/* Patient Profile Block */}
-                        <div className="flex items-center gap-3.5 pt-1">
-                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#271a3d] to-[#161224] border border-purple-800/50 flex items-center justify-center text-purple-200 font-bold text-base shrink-0 shadow-inner">
-                            {patientInitial}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-bold text-base sm:text-lg text-white tracking-tight truncate leading-tight">
-                              {apt.patient_name || 'Patient'}
-                            </h4>
-                            {apt.patient_phone && (
-                              <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-mono mt-1">
-                                <Phone className="w-3 h-3 text-zinc-500 shrink-0" />
-                                <span>{apt.patient_phone}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Doctor & Location Details */}
-                        <div className="pt-3.5 border-t border-[#1e1e28] space-y-2.5 text-xs">
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Stethoscope className="w-4 h-4 text-purple-400 shrink-0" />
-                              <span className="font-semibold text-sm text-zinc-100 truncate">
-                                {apt.doctor_name || 'Dr. Rahul Nair'}
-                              </span>
+                        {/* 2-Column Spacious Grid: Patient on Left, Specialist on Right */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+                          {/* Column 1: Patient Details */}
+                          <div className="p-5 sm:p-6 rounded-xl bg-[#13131b] border border-[#20202c] space-y-4">
+                            <div className="text-[11px] font-mono uppercase tracking-wider text-purple-400 font-bold flex items-center gap-2">
+                              <User className="w-3.5 h-3.5" />
+                              <span>Patient Profile</span>
                             </div>
-                            {apt.doctor_specialization && (
-                              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#181822] text-purple-300 border border-[#2e2e3e] font-medium shrink-0">
-                                {apt.doctor_specialization}
-                              </span>
-                            )}
+
+                            <div className="flex items-center gap-4">
+                              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-800 to-indigo-950 border border-purple-600/50 flex items-center justify-center text-xl font-bold text-white shadow-lg shrink-0">
+                                {patientInitial}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-extrabold text-lg sm:text-xl text-white tracking-tight truncate leading-tight">
+                                  {apt.patient_name || 'Patient'}
+                                </h4>
+                                {apt.patient_phone ? (
+                                  <div className="flex items-center gap-2 text-sm sm:text-base text-zinc-300 font-mono mt-1.5">
+                                    <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
+                                    <span>{apt.patient_phone}</span>
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-zinc-500 font-mono mt-1">No phone on file</div>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 text-zinc-400 font-mono pl-6">
-                            <MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                            <span className="truncate">{apt.doctor_room || 'Room 102 · Primary Care Wing'}</span>
+                          {/* Column 2: Specialist & Clinic Room */}
+                          <div className="p-5 sm:p-6 rounded-xl bg-[#13131b] border border-[#20202c] space-y-4">
+                            <div className="text-[11px] font-mono uppercase tracking-wider text-purple-400 font-bold flex items-center gap-2">
+                              <Stethoscope className="w-3.5 h-3.5" />
+                              <span>Attending Specialist</span>
+                            </div>
+
+                            <div className="space-y-2.5">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <h4 className="font-bold text-lg text-zinc-100 truncate">
+                                  {apt.doctor_name || 'Dr. Rahul Nair'}
+                                </h4>
+                                {apt.doctor_specialization && (
+                                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-950/70 text-purple-300 border border-purple-800/50">
+                                    {apt.doctor_specialization}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 text-sm text-zinc-300 font-mono">
+                                <MapPin className="w-4 h-4 text-purple-400 shrink-0" />
+                                <span className="truncate">{apt.doctor_room || 'Room 102 · Primary Care Wing'}</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Chief Complaint / Reason */}
-                        <div className="p-3.5 rounded-xl bg-[#14141c] border border-[#22222e] border-l-2 border-l-purple-500 text-xs sm:text-sm text-zinc-200 flex items-start gap-3 shadow-inner">
-                          <FileText className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-                          <div className="leading-relaxed">
-                            <span className="font-semibold text-zinc-400">Chief Reason: </span>
-                            <span className="text-white font-medium">
-                              {apt.reason || 'General Medical Consultation & Examination'}
-                            </span>
+                        {/* Full-Width Clinical Reason Callout */}
+                        <div className="p-5 sm:p-6 rounded-xl bg-[#12121a] border border-[#262638] border-l-4 border-l-purple-500 space-y-2 shadow-inner">
+                          <div className="text-xs font-mono uppercase font-bold text-purple-400 tracking-wider flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            <span>Consultation Purpose / Reason</span>
                           </div>
+                          <p className="text-base sm:text-lg text-zinc-100 font-medium leading-relaxed">
+                            {apt.reason || 'General Medical Consultation & Routine Examination'}
+                          </p>
                         </div>
                       </div>
                     );
@@ -773,17 +785,17 @@ export default function LiveCalendar({
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 sm:px-7 py-4 border-t border-[#202028] bg-[#09090c] flex items-center justify-between gap-4 shrink-0">
-              <div className="text-xs text-zinc-400 flex items-center gap-2 font-mono">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Live Clinic Records Synchronized</span>
+            {/* Footer: Clean, spacious bar with action */}
+            <div className="px-6 sm:px-8 lg:px-10 py-5 border-t border-[#22222e] bg-[#09090d] flex items-center justify-between gap-4 shrink-0">
+              <div className="text-xs sm:text-sm text-zinc-400 flex items-center gap-2.5 font-mono">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Live Clinical Database Connected</span>
               </div>
               <button
                 onClick={() => setActiveDayModal(null)}
-                className="btn-dark text-xs sm:text-sm px-5 py-2 font-semibold hover:border-zinc-500 text-zinc-200 hover:text-white transition-colors"
+                className="btn-white text-xs sm:text-sm px-6 py-2.5 font-bold shadow-lg cursor-pointer"
               >
-                Close
+                Close Details
               </button>
             </div>
           </div>
