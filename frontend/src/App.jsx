@@ -4,7 +4,6 @@ import LiveCalendar from './components/LiveCalendar';
 import AgentSidePanel from './components/AgentSidePanel';
 import { useLiveKit } from './hooks/useLiveKit';
 import { api, FALLBACK_DOCTORS } from './services/api';
-import { Calendar, Users, CheckCircle, Clock } from 'lucide-react';
 
 export default function App() {
   const livekit = useLiveKit();
@@ -73,8 +72,8 @@ export default function App() {
   }, [refreshData]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#000000] text-white">
-      {/* Reference UI Header */}
+    <div className="h-screen w-screen flex flex-col bg-[#000000] text-white overflow-hidden select-none">
+      {/* Sleek Minimalist Header with Live Metrics */}
       <Header
         stats={stats}
         onRefresh={() => refreshData(true)}
@@ -89,80 +88,25 @@ export default function App() {
         }}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col p-6 sm:p-8 lg:p-10 xl:p-12 max-w-[1800px] w-full mx-auto space-y-8">
-        {/* Dashboard Title */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-            Dashboard
-          </h1>
-        </div>
+      {/* Main Single-Window Workspace (Zero Window Scrolling) */}
+      <main className="flex-1 min-h-0 p-2.5 sm:p-3 lg:p-4 flex flex-col lg:flex-row gap-3 overflow-hidden">
+        {/* Left Primary Panel: Live Calendar & Specialists Directory */}
+        <section className="flex-1 min-h-0 flex flex-col h-full rounded-xl border border-[#222224] bg-[#000000] overflow-hidden shadow-2xl">
+          <LiveCalendar
+            appointments={appointments}
+            doctors={doctors}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            selectedDoctorId={selectedDoctorId}
+            onChangeDoctor={setSelectedDoctorId}
+          />
+        </section>
 
-        {/* 3 Metric Cards with generous padding and subtle tactile borders */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="p-6 sm:p-7 rounded-2xl bg-[#0a0a0a] border border-[#262626] flex items-center justify-between shadow-md hover:border-[#383838] transition-colors">
-            <div>
-              <div className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">
-                TOTAL APPOINTMENTS
-              </div>
-              <div className="text-3xl sm:text-4xl font-bold text-white mt-2.5 tabular-nums">
-                {stats?.total ?? 0}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-[#141414] border border-[#262626] flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-zinc-400" />
-            </div>
-          </div>
-
-          <div className="p-6 sm:p-7 rounded-2xl bg-[#0a0a0a] border border-[#262626] flex items-center justify-between shadow-md hover:border-[#383838] transition-colors">
-            <div>
-              <div className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">
-                TODAY'S VISITS
-              </div>
-              <div className="text-3xl sm:text-4xl font-bold text-white mt-2.5 tabular-nums">
-                {stats?.today ?? 0}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-[#141414] border border-[#262626] flex items-center justify-center">
-              <Clock className="w-6 h-6 text-zinc-400" />
-            </div>
-          </div>
-
-          <div className="p-6 sm:p-7 rounded-2xl bg-[#0a0a0a] border border-[#262626] flex items-center justify-between shadow-md hover:border-[#383838] transition-colors">
-            <div>
-              <div className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">
-                SCHEDULED
-              </div>
-              <div className="text-3xl sm:text-4xl font-bold text-white mt-2.5 tabular-nums">
-                {stats?.scheduled ?? 0}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-[#141414] border border-[#262626] flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-emerald-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* Two-Panel Responsive Layout: Calendar on Left, AI Agent on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 rounded-2xl border border-[#27272a] bg-[#000000] overflow-hidden min-h-[720px] shadow-2xl">
-          {/* Left Panel: Live Calendar */}
-          <section className="lg:col-span-7 xl:col-span-8 flex flex-col border-b lg:border-b-0 lg:border-r border-[#242424] min-h-[540px]">
-            <LiveCalendar
-              appointments={appointments}
-              doctors={doctors}
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-              selectedDoctorId={selectedDoctorId}
-              onChangeDoctor={setSelectedDoctorId}
-            />
-          </section>
-
-          {/* Right Panel: AI Voice Agent */}
-          <aside className="lg:col-span-5 xl:col-span-4 flex flex-col bg-[#000000] min-h-[540px]">
-            <AgentSidePanel livekit={livekit} />
-          </aside>
-        </div>
-      </div>
+        {/* Right Secondary Panel: Mia Voice AI Receptionist */}
+        <aside className="w-full lg:w-[380px] xl:w-[410px] shrink-0 flex flex-col h-full rounded-xl border border-[#222224] bg-[#000000] overflow-hidden shadow-2xl">
+          <AgentSidePanel livekit={livekit} />
+        </aside>
+      </main>
     </div>
   );
 }

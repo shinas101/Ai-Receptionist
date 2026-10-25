@@ -1,25 +1,46 @@
 import React from 'react';
-import { RefreshCw, Radio } from 'lucide-react';
+import { RefreshCw, Activity, Calendar, Clock, CheckCircle } from 'lucide-react';
 
 export default function Header({ stats, onRefresh, isRefreshing, isConnected, onToggleCall }) {
   return (
-    <header className="border-b border-[#222222] bg-[#000000] px-6 py-4 flex items-center justify-between text-sm select-none">
-      {/* Left: Square Brand Box + Title (matches screenshot) */}
+    <header className="h-14 shrink-0 border-b border-[#222222] bg-[#000000] px-4 sm:px-6 flex items-center justify-between text-sm select-none z-10">
+      {/* Left: Square Brand Box + Title */}
       <div className="flex items-center gap-3">
-        <div className="border border-white/30 rounded px-2 py-1 text-xs font-bold tracking-wider text-white">
+        <div className="border border-white/30 rounded px-2 py-0.5 text-xs font-bold tracking-wider text-white bg-white/5">
           ABC
         </div>
-        <span className="font-bold text-lg text-white tracking-tight">
-          ABC Health Care
-        </span>
+        <div className="flex items-baseline gap-2">
+          <span className="font-bold text-base sm:text-lg text-white tracking-tight">
+            ABC Health Care
+          </span>
+          <span className="text-[11px] font-mono text-zinc-500 hidden xl:inline">
+            Receptionist Console
+          </span>
+        </div>
       </div>
 
-      {/* Right: Clean minimal actions */}
-      <div className="flex items-center gap-4">
+      {/* Center: Minimal Stat Badges (Replaces tall metric cards to fit 1-window) */}
+      <div className="hidden md:flex items-center gap-2 lg:gap-3 text-xs font-mono">
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#0c0c0e] border border-[#222226] text-zinc-300 hover:border-zinc-700 transition-colors">
+          <span className="text-[10px] uppercase font-semibold text-zinc-500">Total</span>
+          <span className="font-bold text-white tabular-nums">{stats?.total ?? 0}</span>
+        </div>
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#0c0c0e] border border-[#222226] text-zinc-300 hover:border-zinc-700 transition-colors">
+          <span className="text-[10px] uppercase font-semibold text-zinc-500">Today</span>
+          <span className="font-bold text-purple-300 tabular-nums">{stats?.today ?? 0}</span>
+        </div>
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#0c0c0e] border border-[#222226] text-zinc-300 hover:border-zinc-700 transition-colors">
+          <span className="text-[10px] uppercase font-semibold text-zinc-500">Scheduled</span>
+          <span className="font-bold text-emerald-400 tabular-nums">{stats?.scheduled ?? 0}</span>
+        </div>
+      </div>
+
+      {/* Right: Status & Actions */}
+      <div className="flex items-center gap-3">
         {/* Simple live status */}
-        <div className="flex items-center gap-2 text-xs text-zinc-400 hidden sm:flex">
+        <div className="flex items-center gap-2 text-xs text-zinc-400 hidden sm:flex px-2 py-1 rounded-md bg-[#0c0c0e] border border-[#222226]">
           <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
-          <span>{isConnected ? 'Mia Live' : 'Ready'}</span>
+          <span className="font-medium text-zinc-300">{isConnected ? 'Mia Connected' : 'Agent Ready'}</span>
         </div>
 
         {/* Refresh button */}
@@ -27,15 +48,15 @@ export default function Header({ stats, onRefresh, isRefreshing, isConnected, on
           onClick={onRefresh}
           disabled={isRefreshing}
           title="Refresh Data"
-          className="p-2 rounded text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+          className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-[#2a2a2a] transition-colors"
         >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-white' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-white' : ''}`} />
         </button>
 
-        {/* Primary White Button (matches screenshot: Dashboard ->) */}
+        {/* Primary Call Action */}
         <button
           onClick={onToggleCall}
-          className="btn-white text-sm px-4 py-2"
+          className="btn-white text-xs sm:text-sm px-3.5 py-1.5 font-semibold"
         >
           {isConnected ? 'End Call' : 'Call Mia →'}
         </button>
