@@ -2,6 +2,8 @@
 
 An enterprise-ready, voice-enabled AI medical receptionist and clinical management system built with **LiveKit Agents**, **OpenAI**, **PostgreSQL (pgvector)** / **SQLite**, and a **React + Vite** live management dashboard.
 
+![ABC Health Care Clinical Dashboard & Voice Assistant](docs/screenshots/dashboard.png)
+
 ---
 
 ## 🌟 Key Features
@@ -177,6 +179,8 @@ heroku ps:scale web=1 worker=1
 
 ```
 ai-receptionist/
+├── docs/
+│   └── screenshots/       # Dashboard and consultation interface previews
 ├── nginx/
 │   ├── nginx.conf         # Reverse proxy, SSL termination, rate-limiting & CORS configuration
 │   └── ssl/               # Self-signed and production X.509 certificates (cert.pem, key.pem)
