@@ -20,6 +20,8 @@ export function useLiveKit() {
   ]);
   const [roomInfo, setRoomInfo] = useState(null);
   const [error, setError] = useState(null);
+  const [startupStatus, setStartupStatus] = useState(null); // { status: string, message: string }
+  const [activeToolCall, setActiveToolCall] = useState(null); // { tool: string, message: string, status: 'running'|'completed', timestamp: number }
 
   const roomRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -195,6 +197,10 @@ export function useLiveKit() {
     setConnectionState('connecting');
     setAgentState('connecting');
     setError(null);
+    setStartupStatus({
+      status: 'token',
+      message: 'Authorizing consultation credentials...',
+    });
 
     // Resume or unlock Web Audio on direct user click
     try {
@@ -215,6 +221,11 @@ export function useLiveKit() {
       if (!tokenRes || !tokenRes.token) {
         throw new Error(tokenRes?.error || 'Failed to obtain LiveKit token');
       }
+
+      setStartupStatus({
+        status: 'connecting',
+        message: 'Establishing WebRTC clinical audio connection...',
+      });
 
       setRoomInfo({
         room: tokenRes.room,
@@ -249,6 +260,14 @@ export function useLiveKit() {
           if (track.mediaStream) {
             setupAudioAnalysis(track.mediaStream);
           }
+
+          setStartupStatus({
+            status: 'agent_connected',
+            message: 'Mia connected. Preparing initial greeting...',
+          });
+          setTimeout(() => {
+            setStartupStatus((prev) => (prev?.status === 'agent_connected' ? null : prev));
+          }, 2000);
         }
       };
 
@@ -271,6 +290,7 @@ export function useLiveKit() {
               participant?.identity?.toLowerCase().includes('mia');
             const speaker = isAgent ? 'MIA' : 'Patient';
             appendTranscript(speaker, seg.text.trim(), isAgent ? 'agent' : 'user', seg.final, seg.id);
+            setStartupStatus(null);
           }
         }
       });
@@ -290,10 +310,12 @@ export function useLiveKit() {
             accumulated += chunk;
             if (accumulated.trim()) {
               appendTranscript(speaker, accumulated.trim(), isAgent ? 'agent' : 'user', false, segmentId);
+              setStartupStatus(null);
             }
           }
           if (accumulated.trim()) {
             appendTranscript(speaker, accumulated.trim(), isAgent ? 'agent' : 'user', true, segmentId);
+            setStartupStatus(null);
           }
         });
       } catch (err) {
@@ -309,26 +331,80 @@ export function useLiveKit() {
             participant?.identity?.toLowerCase().includes('mia');
           const speaker = isAgent ? 'MIA' : 'Patient';
           appendTranscript(speaker, msg.message, isAgent ? 'agent' : 'user', true, msg.id);
+          setStartupStatus(null);
         }
       });
 
-      // 4. Reliable Data Channel Packets (from agent.py broadcast)
+      // 4. Reliable Data Channel Packets (from agent.py & tools broadcast)
       room.on(RoomEvent.DataReceived, (payload, participant) => {
         if (participant?.isLocal) return; // Prevent local loopback echo
         try {
           const decoder = new TextDecoder();
           const str = decoder.decode(payload);
           const data = JSON.parse(str);
+
+          // Tool call execution tracking
+          if (data && data.type === 'tool_call') {
+            if (data.status === 'running') {
+              setActiveToolCall({
+                tool: data.tool,
+                message: data.message,
+                status: 'running',
+                timestamp: Date.now(),
+              });
+              setAgentState('thinking');
+            } else if (data.status === 'completed' || data.status === 'done') {
+              setActiveToolCall((prev) => ({
+                tool: prev?.tool || data.tool,
+                message: data.message || 'Action completed',
+                status: 'completed',
+                timestamp: Date.now(),
+              }));
+              setTimeout(() => {
+                setActiveToolCall((prev) => (prev?.status === 'completed' ? null : prev));
+              }, 2500);
+            }
+            return;
+          }
+
+          // Agent startup status tracking
+          if (data && data.type === 'agent_status') {
+            setStartupStatus({
+              status: data.status,
+              message: data.message,
+            });
+            if (data.status === 'ready') {
+              setTimeout(() => {
+                setStartupStatus(null);
+              }, 1800);
+            }
+            return;
+          }
+
+          // Agent state tracking
+          if (data && data.type === 'agent_state') {
+            if (data.state) {
+              setAgentState(data.state);
+              if (data.state === 'speaking') {
+                setStartupStatus(null);
+              }
+            }
+            return;
+          }
+
+          // Transcripts
           if (data && (data.text || data.transcript)) {
             const text = (data.text || data.transcript).trim();
             const rawSpeaker = data.speaker || participant?.identity || 'MIA';
             appendTranscript(rawSpeaker, text, 'chat', data.final !== false, data.id);
+            setStartupStatus(null);
           }
         } catch {
           try {
             const text = new TextDecoder().decode(payload).trim();
             if (text) {
               appendTranscript(participant?.identity || 'MIA', text, 'chat');
+              setStartupStatus(null);
             }
           } catch (e) {
             console.warn('Data decode note:', e);
@@ -339,10 +415,17 @@ export function useLiveKit() {
       room.on(RoomEvent.Disconnected, () => {
         setConnectionState('disconnected');
         setAgentState('idle');
+        setStartupStatus(null);
+        setActiveToolCall(null);
       });
 
       // Connect to LiveKit WebRTC
       await room.connect(tokenRes.url, tokenRes.token);
+
+      setStartupStatus({
+        status: 'waiting_agent',
+        message: 'Connected to clinic room. Waiting for Mia to join...',
+      });
 
       // Check existing participants/tracks
       room.remoteParticipants.forEach((p) => {
@@ -486,6 +569,8 @@ export function useLiveKit() {
     setIsAgentSpeaking(false);
     setAgentAudioLevel(0);
     setUserAudioLevel(0);
+    setStartupStatus(null);
+    setActiveToolCall(null);
   }, []);
 
   // Toggle Mute
@@ -597,6 +682,8 @@ export function useLiveKit() {
     transcripts,
     roomInfo,
     error,
+    startupStatus,
+    activeToolCall,
     connect,
     disconnect,
     toggleMute,

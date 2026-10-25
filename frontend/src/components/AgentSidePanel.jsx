@@ -1,4 +1,3 @@
-import React, { useState, useRef, useEffect } from 'react';
 import {
   Mic,
   MicOff,
@@ -9,6 +8,9 @@ import {
   User,
   History,
   ChevronUp,
+  Loader2,
+  CheckCircle2,
+  Activity,
 } from 'lucide-react';
 import { AgentAudioVisualizerAura } from './agents-ui/agent-audio-visualizer-aura';
 
@@ -24,6 +26,8 @@ export default function AgentSidePanel({ livekit }) {
     agentAudioLevel,
     agentState,
     transcripts,
+    startupStatus,
+    activeToolCall,
     connect,
     disconnect,
     toggleMute,
@@ -39,7 +43,7 @@ export default function AgentSidePanel({ livekit }) {
     if (showHistory && logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [transcripts, isAgentSpeaking, showHistory]);
+  }, [transcripts, isAgentSpeaking, showHistory, activeToolCall, startupStatus]);
 
   const handleSendMessage = (e) => {
     e?.preventDefault();
@@ -75,17 +79,52 @@ export default function AgentSidePanel({ livekit }) {
         </div>
 
         <div>
-          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-[#111111] border border-[#262626] text-zinc-300 flex items-center gap-1.5">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isConnected
-                  ? 'bg-emerald-500 animate-pulse'
-                  : isConnecting
-                  ? 'bg-amber-400 animate-pulse'
-                  : 'bg-zinc-600'
-              }`}
-            />
-            {isConnected ? (isAgentSpeaking ? 'Speaking' : 'Listening') : isConnecting ? 'Connecting' : 'Ready'}
+          <span
+            className={`text-[11px] font-medium px-2.5 py-1 rounded-full border flex items-center gap-1.5 transition-all duration-200 ${
+              activeToolCall?.status === 'running'
+                ? 'bg-purple-950/50 border-purple-600/50 text-purple-200 shadow-sm'
+                : isConnecting || (startupStatus && startupStatus.status !== 'ready')
+                ? 'bg-amber-950/40 border-amber-600/40 text-amber-300'
+                : isConnected
+                ? isAgentSpeaking
+                  ? 'bg-emerald-950/40 border-emerald-600/40 text-emerald-300'
+                  : agentState === 'thinking'
+                  ? 'bg-purple-950/40 border-purple-600/40 text-purple-300'
+                  : 'bg-[#111111] border-[#262626] text-zinc-300'
+                : 'bg-[#111111] border-[#262626] text-zinc-400'
+            }`}
+          >
+            {activeToolCall?.status === 'running' ? (
+              <>
+                <Loader2 className="w-3 h-3 text-purple-400 animate-spin" />
+                <span>Mia Working...</span>
+              </>
+            ) : isConnecting || (startupStatus && startupStatus.status !== 'ready') ? (
+              <>
+                <Loader2 className="w-3 h-3 text-amber-400 animate-spin" />
+                <span>Connecting...</span>
+              </>
+            ) : isConnected ? (
+              <>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isAgentSpeaking
+                      ? 'bg-emerald-400 animate-pulse'
+                      : agentState === 'thinking'
+                      ? 'bg-purple-400 animate-pulse'
+                      : 'bg-emerald-500'
+                  }`}
+                />
+                <span>
+                  {isAgentSpeaking ? 'Speaking' : agentState === 'thinking' ? 'Thinking' : 'Listening'}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-zinc-600" />
+                <span>Ready</span>
+              </>
+            )}
           </span>
         </div>
       </div>
@@ -98,7 +137,7 @@ export default function AgentSidePanel({ livekit }) {
             size="md"
             color="#C04CFA"
             colorShift={0.12}
-            state={agentState}
+            state={activeToolCall?.status === 'running' ? 'thinking' : agentState}
             volume={agentAudioLevel / 100}
             className="mx-auto"
           />
@@ -110,9 +149,16 @@ export default function AgentSidePanel({ livekit }) {
             <button
               onClick={() => connect()}
               disabled={isConnecting}
-              className="btn-white w-full py-2.5 text-xs sm:text-sm font-semibold tracking-wide"
+              className="btn-white w-full py-2.5 text-xs sm:text-sm font-semibold tracking-wide flex items-center justify-center gap-2"
             >
-              {isConnecting ? 'Connecting...' : 'Start Consultation →'}
+              {isConnecting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                  <span>Connecting Consultation...</span>
+                </>
+              ) : (
+                'Start Consultation →'
+              )}
             </button>
           ) : (
             <>
@@ -252,6 +298,80 @@ export default function AgentSidePanel({ livekit }) {
               </div>
             );
           })}
+
+          {/* Startup Loading Status Card */}
+          {Boolean(isConnecting || (startupStatus && startupStatus.status !== 'ready')) && (
+            <div className="p-3 rounded-lg border border-purple-800/40 bg-gradient-to-r from-purple-950/40 via-[#0e0e16] to-[#08080c] text-xs text-white shadow-lg">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin shrink-0" />
+                <span className="font-semibold text-purple-200 text-xs tracking-tight">
+                  Consultation Setup
+                </span>
+                <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700/50 ml-auto">
+                  LiveKit Audio
+                </span>
+              </div>
+              <p className="text-zinc-300 text-xs pl-5.5 leading-relaxed">
+                {startupStatus?.message || 'Connecting to clinical WebRTC audio channel...'}
+              </p>
+              <div className="mt-2 pl-5.5 flex items-center gap-2">
+                <div className="h-1 flex-1 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full animate-pulse w-3/4" />
+                </div>
+                <span className="text-[10px] text-zinc-500 font-mono">Initializing</span>
+              </div>
+            </div>
+          )}
+
+          {/* Tool Calling Active / Completed Card */}
+          {Boolean(activeToolCall) && (
+            <div
+              className={`p-3 rounded-lg border text-xs shadow-md transition-all duration-200 ${
+                activeToolCall.status === 'running'
+                  ? 'border-purple-600/50 bg-[#0e0c18] text-white shadow-purple-950/30'
+                  : 'border-emerald-600/40 bg-[#0c140e] text-emerald-100'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  {activeToolCall.status === 'running' ? (
+                    <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  )}
+                  <span
+                    className={`font-semibold text-xs ${
+                      activeToolCall.status === 'running' ? 'text-purple-300' : 'text-emerald-300'
+                    }`}
+                  >
+                    {activeToolCall.status === 'running'
+                      ? 'Mia Querying Clinic Records'
+                      : 'Clinic Action Complete'}
+                  </span>
+                </div>
+                <span
+                  className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded border ${
+                    activeToolCall.status === 'running'
+                      ? 'bg-purple-950/60 text-purple-300 border-purple-800/40 animate-pulse'
+                      : 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40'
+                  }`}
+                >
+                  {activeToolCall.status === 'running' ? 'Active' : 'Done'}
+                </span>
+              </div>
+              <p className="text-zinc-200 text-xs pl-5.5 leading-relaxed">
+                {activeToolCall.message}
+              </p>
+            </div>
+          )}
+
+          {/* Thinking status fallback if no tool calling card is visible */}
+          {agentState === 'thinking' && !activeToolCall && !isConnecting && (
+            <div className="text-purple-300 text-xs flex items-center gap-2 font-medium py-1.5 px-3 rounded-lg bg-purple-950/30 border border-purple-900/40 animate-pulse">
+              <Loader2 className="w-3 h-3 text-purple-400 animate-spin shrink-0" />
+              <span>Mia is processing your clinical request...</span>
+            </div>
+          )}
 
           {isAgentSpeaking && !displayTranscripts.some((t) => (t.speaker?.toUpperCase() === 'MIA' || t.type === 'agent') && !t.final) && (
             <div className="text-purple-400 text-xs flex items-center gap-2 font-medium py-0.5 animate-pulse">

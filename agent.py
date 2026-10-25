@@ -217,6 +217,76 @@ async def my_agent(ctx: agents.JobContext):
                 })
             )
 
+    def _get_friendly_tool_message(tool_name: str) -> str:
+        name = (tool_name or "").lower()
+        if "doctor" in name:
+            return "Searching medical specialists & clinic departments..."
+        elif "slot" in name or "availab" in name:
+            return "Querying clinic calendar for available time slots..."
+        elif "book" in name or "create" in name:
+            return "Confirming appointment in clinic database..."
+        elif "reschedule" in name:
+            return "Rescheduling appointment in calendar..."
+        elif "cancel" in name:
+            return "Processing appointment cancellation..."
+        elif "customer" in name or "recall" in name or "remember" in name:
+            return "Accessing patient medical history & notes..."
+        elif "time" in name or "date" in name:
+            return "Synchronizing clinic time & scheduling..."
+        return f"Executing {tool_name}..."
+
+    # Broadcast live tool execution events
+    @session.on("tool_execution_updated")
+    def _on_tool_execution_updated(ev: events.ToolExecutionUpdatedEvent):
+        update = getattr(ev, "update", None)
+        if not update:
+            return
+        update_type = getattr(update, "type", "")
+        if update_type == "tool_call_started" or isinstance(update, events.ToolCallStarted):
+            fc = getattr(update, "function_call", None)
+            tool_name = getattr(fc, "name", "clinic_tool") if fc else "clinic_tool"
+            msg = _get_friendly_tool_message(tool_name)
+            logger.info("Tool started: %s -> %s", tool_name, msg)
+            asyncio.create_task(
+                _safe_publish_data({
+                    "type": "tool_call",
+                    "status": "running",
+                    "tool": tool_name,
+                    "message": msg,
+                    "call_id": getattr(fc, "call_id", None) or getattr(fc, "id", None) or str(time.time()),
+                })
+            )
+        elif update_type == "tool_call_ended" or isinstance(update, events.ToolCallEnded):
+            status = getattr(update, "status", "done")
+            call_id = getattr(update, "call_id", None) or getattr(update, "id", None) or ""
+            asyncio.create_task(
+                _safe_publish_data({
+                    "type": "tool_call",
+                    "status": "completed" if status == "done" else status,
+                    "tool": "clinic_tool",
+                    "message": "Completed",
+                    "call_id": call_id,
+                })
+            )
+
+    # Broadcast agent state changes (listening, thinking, speaking)
+    @session.on("agent_state_changed")
+    def _on_agent_state_changed(ev: events.AgentStateChangedEvent):
+        state = getattr(ev, "state", None) or getattr(ev, "new_state", "")
+        asyncio.create_task(
+            _safe_publish_data({
+                "type": "agent_state",
+                "state": str(state).lower(),
+            })
+        )
+
+    # Broadcast startup progress to room
+    await _safe_publish_data({
+        "type": "agent_status",
+        "status": "initializing",
+        "message": "Mia is initializing clinical reception services...",
+    })
+
     await session.start(
         room=ctx.room,
         agent=Assistant(),
@@ -235,10 +305,23 @@ async def my_agent(ctx: agents.JobContext):
         ),
     )
 
+    # Broadcast ready status
+    await _safe_publish_data({
+        "type": "agent_status",
+        "status": "ready",
+        "message": "Mia connected to consultation room.",
+    })
+
     greeting_text = (
         "Hello! Thank you for calling ABC Health Care. My name is Mia. "
         "How can I assist you with your appointment today?"
     )
+
+    await _safe_publish_data({
+        "type": "agent_status",
+        "status": "speaking",
+        "message": "Mia is greeting you...",
+    })
 
     await session.generate_reply(instructions=f"Say: {greeting_text}")
 

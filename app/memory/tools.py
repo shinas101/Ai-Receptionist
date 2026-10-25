@@ -9,6 +9,7 @@ from app.memory.service import (
     get_memories,
     get_customer_appointments,
 )
+from app.tools import broadcast_tool_status
 
 
 class MemoryTools:
@@ -20,12 +21,14 @@ class MemoryTools:
         phone: str,
     ) -> str:
         """Find an existing patient record using their phone number at ABC Health Care."""
-
+        await broadcast_tool_status(context, "find_customer", f"Searching patient records for {phone}...", "running")
         customer = await get_customer_by_phone(phone)
 
         if not customer:
+            await broadcast_tool_status(context, "find_customer", "Patient record not found in system.", "completed")
             return "Patient record not found at ABC Health Care."
 
+        await broadcast_tool_status(context, "find_customer", f"Found record for {customer['name']}.", "completed")
         info_lines = [
             f"Customer ID (Patient ID): {customer['id']}",
             f"Patient Name: {customer['name']}",
@@ -72,8 +75,9 @@ class MemoryTools:
         phone: str,
     ) -> str:
         """Create or update a patient record in the ABC Health Care database."""
-
+        await broadcast_tool_status(context, "save_customer", f"Saving patient profile for {name}...", "running")
         customer = await create_customer(name=name, phone=phone)
+        await broadcast_tool_status(context, "save_customer", f"Patient profile saved for {name}.", "completed")
 
         return (
             f"Patient profile saved successfully at ABC Health Care.\n"
@@ -90,14 +94,16 @@ class MemoryTools:
         memory: str,
     ) -> str:
         """Save useful long-term information about a patient at ABC Health Care (preferences, doctor choices, notes)."""
-
+        await broadcast_tool_status(context, "remember", "Saving patient preference and context...", "running")
         try:
             await save_memory(
                 customer_id=customer_id,
                 memory=memory,
             )
+            await broadcast_tool_status(context, "remember", "Patient preference saved.", "completed")
             return "Memory saved successfully."
         except Exception as e:
+            await broadcast_tool_status(context, "remember", f"Error saving memory: {e}", "error")
             return f"Failed to save memory: {e}"
 
     @function_tool
@@ -108,7 +114,7 @@ class MemoryTools:
         query: str,
     ) -> str:
         """Search the patient's memories and notes using semantic similarity or recent notes."""
-
+        await broadcast_tool_status(context, "recall", f"Retrieving medical history for '{query}'...", "running")
         try:
             memories = await search_memories(
                 customer_id=customer_id,
@@ -123,11 +129,14 @@ class MemoryTools:
             ]
 
             if not relevant_memories:
+                await broadcast_tool_status(context, "recall", "No prior notes found.", "completed")
                 return "No relevant memories found."
 
+            await broadcast_tool_status(context, "recall", f"Found {len(relevant_memories)} historical notes.", "completed")
             return "\n".join(
                 f"- {row['memory']}"
                 for row in relevant_memories
             )
         except Exception as e:
+            await broadcast_tool_status(context, "recall", f"Error recalling notes: {e}", "error")
             return f"Failed to recall memories: {e}"

@@ -1,4 +1,7 @@
 import asyncio
+import json
+import logging
+import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -25,6 +28,32 @@ from app.memory.service import (
     get_local_available_slots,
 )
 
+logger = logging.getLogger("ai-receptionist.tools")
+
+
+async def broadcast_tool_status(
+    context: RunContext,
+    tool_name: str,
+    message: str,
+    status: str = "running",
+):
+    """Publish live tool calling progress to the client WebRTC room."""
+    try:
+        session = getattr(context, "session", None)
+        if session:
+            room = getattr(session, "room", None)
+            if room and room.isconnected():
+                payload = json.dumps({
+                    "type": "tool_call",
+                    "status": status,
+                    "tool": tool_name,
+                    "message": message,
+                    "timestamp": time.time(),
+                }).encode("utf-8")
+                await room.local_participant.publish_data(payload, reliable=True, topic="status")
+    except Exception as e:
+        logger.debug("broadcast_tool_status note: %s", e)
+
 
 class AppointmentTools:
 
@@ -34,7 +63,7 @@ class AppointmentTools:
         context: RunContext,
     ) -> dict:
         """Get the current date and time in India for ABC Health Care clinic scheduling."""
-
+        await broadcast_tool_status(context, "get_current_datetime", "Checking current clinic date and time...", "running")
         now = datetime.now(ZoneInfo("Asia/Kolkata"))
 
         return {
@@ -52,12 +81,14 @@ class AppointmentTools:
         query: str = "",
     ) -> dict:
         """Get the list of doctors and their specializations at ABC Health Care. Can optionally search by specialization (e.g., 'Cardiology', 'Dermatology', 'General Physician') or doctor name."""
-
+        search_desc = f" for '{query}'" if query else ""
+        await broadcast_tool_status(context, "get_doctors", f"Searching medical specialists directory{search_desc}...", "running")
         try:
             if query and query.strip():
                 docs = await find_doctor(query.strip())
             else:
                 docs = await fetch_doctors()
+            await broadcast_tool_status(context, "get_doctors", f"Found {len(docs)} medical specialists.", "completed")
 
             results = [
                 {
@@ -92,7 +123,7 @@ class AppointmentTools:
         doctor_id: str = "",
     ) -> dict:
         """Check whether a specific appointment time is available at ABC Health Care clinic."""
-
+        await broadcast_tool_status(context, "check_availability", f"Checking availability for {start_time}...", "running")
         try:
             tz = ZoneInfo("Asia/Kolkata")
             start = datetime.fromisoformat(start_time)
@@ -104,6 +135,7 @@ class AppointmentTools:
             # 1. Always check local clinic appointment database
             local_free = await check_local_availability(start, end, doctor_id=doctor_id)
             if not local_free:
+                await broadcast_tool_status(context, "check_availability", "Slot is already booked in clinic calendar.", "completed")
                 return {
                     "success": True,
                     "available": False,
@@ -116,6 +148,7 @@ class AppointmentTools:
             if is_google_calendar_enabled():
                 google_free = await asyncio.to_thread(google_is_available, start, end)
                 if not google_free:
+                    await broadcast_tool_status(context, "check_availability", "Slot unavailable on Google Calendar.", "completed")
                     return {
                         "success": True,
                         "available": False,
@@ -124,6 +157,7 @@ class AppointmentTools:
                         "source": "google_calendar",
                     }
 
+            await broadcast_tool_status(context, "check_availability", "Time slot is available!", "completed")
             return {
                 "success": True,
                 "available": True,
@@ -133,6 +167,7 @@ class AppointmentTools:
             }
 
         except Exception as e:
+            await broadcast_tool_status(context, "check_availability", f"Error checking availability: {e}", "error")
             return {
                 "success": False,
                 "error": str(e),
@@ -147,13 +182,14 @@ class AppointmentTools:
         doctor_id: str = "",
     ) -> dict:
         """Get available appointment slots for a specific date at ABC Health Care clinic."""
-
+        await broadcast_tool_status(context, "get_available_slots", f"Querying appointment slots for {date}...", "running")
         try:
             slots = await get_local_available_slots(
                 date_str=date,
                 duration_minutes=duration_minutes,
                 doctor_id=doctor_id if doctor_id else None,
             )
+            await broadcast_tool_status(context, "get_available_slots", f"Found {len(slots)} open slots for {date}.", "completed")
 
             return {
                 "success": True,
@@ -164,6 +200,7 @@ class AppointmentTools:
             }
 
         except Exception as e:
+            await broadcast_tool_status(context, "get_available_slots", f"Error querying slots: {e}", "error")
             return {
                 "success": False,
                 "error": str(e),
@@ -181,7 +218,7 @@ class AppointmentTools:
         doctor_id: str = "",
     ) -> dict:
         """Book a clinic appointment for a patient at ABC Health Care after the patient confirms the time and doctor, and save to database (and Google Calendar if enabled)."""
-
+        await broadcast_tool_status(context, "book_appointment", f"Booking appointment for {customer_name}...", "running")
         try:
             tz = ZoneInfo("Asia/Kolkata")
             start = datetime.fromisoformat(start_time)
@@ -282,6 +319,7 @@ class AppointmentTools:
             except Exception:
                 pass
 
+            await broadcast_tool_status(context, "book_appointment", f"Appointment confirmed for {customer_name} with {doctor_name}!", "completed")
             return {
                 "success": True,
                 "message": f"Appointment booked and saved successfully with {doctor_name} ({doctor_spec}).",
@@ -299,6 +337,7 @@ class AppointmentTools:
             }
 
         except Exception as e:
+            await broadcast_tool_status(context, "book_appointment", f"Booking error: {e}", "error")
             return {
                 "success": False,
                 "error": str(e),
@@ -311,7 +350,7 @@ class AppointmentTools:
         event_id: str,
     ) -> dict:
         """Cancel an existing patient appointment at ABC Health Care."""
-
+        await broadcast_tool_status(context, "cancel_appointment", "Cancelling appointment...", "running")
         try:
             if is_google_calendar_enabled():
                 try:
@@ -321,6 +360,7 @@ class AppointmentTools:
 
             # Update status in local database
             await update_appointment_status(event_id, "cancelled")
+            await broadcast_tool_status(context, "cancel_appointment", "Appointment cancelled successfully.", "completed")
 
             return {
                 "success": True,
@@ -329,6 +369,7 @@ class AppointmentTools:
             }
 
         except Exception as e:
+            await broadcast_tool_status(context, "cancel_appointment", f"Cancellation error: {e}", "error")
             return {
                 "success": False,
                 "error": str(e),
@@ -343,7 +384,7 @@ class AppointmentTools:
         duration_minutes: int = 30,
     ) -> dict:
         """Reschedule an existing patient appointment at ABC Health Care."""
-
+        await broadcast_tool_status(context, "reschedule_appointment", f"Rescheduling appointment to {new_start_time}...", "running")
         try:
             tz = ZoneInfo("Asia/Kolkata")
             start = datetime.fromisoformat(new_start_time)
@@ -355,6 +396,7 @@ class AppointmentTools:
             # Check availability
             local_free = await check_local_availability(start, end, exclude_appointment_id=event_id)
             if not local_free:
+                await broadcast_tool_status(context, "reschedule_appointment", "The new time slot is not available.", "error")
                 return {
                     "success": False,
                     "error": "The new time slot is not available.",
@@ -377,6 +419,7 @@ class AppointmentTools:
                 start_time=start,
                 end_time=end,
             )
+            await broadcast_tool_status(context, "reschedule_appointment", f"Rescheduled to {start.strftime('%b %d at %I:%M %p')}.", "completed")
 
             return {
                 "success": True,
@@ -387,6 +430,7 @@ class AppointmentTools:
             }
 
         except Exception as e:
+            await broadcast_tool_status(context, "reschedule_appointment", f"Reschedule error: {e}", "error")
             return {
                 "success": False,
                 "error": str(e),
@@ -398,7 +442,7 @@ class AppointmentTools:
         context: RunContext,
     ) -> dict:
         """End or hang up the phone call with the patient when the conversation has ended, or when the patient says goodbye or wants to disconnect."""
-
+        await broadcast_tool_status(context, "end_call", "Ending consultation call...", "running")
         async def _delayed_disconnect():
             try:
                 await asyncio.sleep(2.5)
