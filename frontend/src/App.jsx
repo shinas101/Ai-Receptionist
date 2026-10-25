@@ -89,9 +89,9 @@ export default function App() {
       />
 
       {/* Main Single-Window Workspace (Zero Window Scrolling) */}
-      <main className="flex-1 min-h-0 p-2.5 sm:p-3 lg:p-4 flex flex-col lg:flex-row gap-3 overflow-hidden">
+      <main className="flex-1 min-h-0 p-3 sm:p-3.5 lg:p-4.5 flex flex-col lg:flex-row gap-4 overflow-hidden">
         {/* Left Primary Panel: Live Calendar & Specialists Directory */}
-        <section className="flex-1 min-h-0 flex flex-col h-full rounded-xl border border-[#222224] bg-[#000000] overflow-hidden shadow-2xl">
+        <section className="flex-1 min-h-0 flex flex-col h-full rounded-2xl border border-[#222228] bg-[#000000] overflow-hidden shadow-2xl">
           <LiveCalendar
             appointments={appointments}
             doctors={doctors}
@@ -103,7 +103,7 @@ export default function App() {
         </section>
 
         {/* Right Secondary Panel: Mia Voice AI Receptionist */}
-        <aside className="w-full lg:w-[380px] xl:w-[410px] shrink-0 flex flex-col h-full rounded-xl border border-[#222224] bg-[#000000] overflow-hidden shadow-2xl">
+        <aside className="w-full lg:w-[380px] xl:w-[410px] shrink-0 flex flex-col h-full rounded-2xl border border-[#222228] bg-[#000000] overflow-hidden shadow-2xl">
           <AgentSidePanel livekit={livekit} />
         </aside>
       </main>

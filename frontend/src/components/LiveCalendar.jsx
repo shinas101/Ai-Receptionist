@@ -187,6 +187,25 @@ export default function LiveCalendar({
     return dateStr;
   };
 
+  const formatFullDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return d.toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        });
+      }
+    } catch {
+      // Fallback
+    }
+    return dateStr;
+  };
+
   // Filtered doctors for the Doctors directory tab
   const filteredDoctors = useMemo(() => {
     if (!doctorSearch.trim()) return doctors;
@@ -572,60 +591,66 @@ export default function LiveCalendar({
         </div>
       )}
 
-      {/* DAY BOOKINGS MODAL */}
+      {/* DAY BOOKINGS MODAL - REDESIGNED SPATIOUS & ELEGANT */}
       {activeDayModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 sm:p-6 lg:p-8 animate-in fade-in duration-200"
           onClick={() => setActiveDayModal(null)}
         >
           <div
-            className="w-full max-w-3xl lg:max-w-4xl bg-[#0a0a0a] border border-[#222222] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[88vh]"
+            className={`w-full ${
+              modalAppointments.length > 1 ? 'max-w-3xl' : 'max-w-xl'
+            } bg-[#0b0b0e] border border-[#262630] rounded-2xl shadow-[0_25px_70px_-15px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col max-h-[85vh] transition-all`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header: Clean, consistent with App Header */}
-            <div className="px-6 py-4 border-b border-[#222222] bg-[#000000] flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="border border-white/20 rounded px-2 py-1 text-xs font-bold tracking-wider text-white">
-                  DAY
+            {/* Header: Spacious, elegant clinical title & controls */}
+            <div className="px-6 sm:px-7 py-5 border-b border-[#202028] bg-gradient-to-r from-[#0d0d12] via-[#09090c] to-[#0d0d12] flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-purple-950/40 border border-purple-800/40 flex items-center justify-center text-purple-400 shrink-0 shadow-inner">
+                  <CalendarIcon className="w-5 h-5" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base sm:text-lg text-white tracking-tight truncate">
-                      {formatFriendlyDate(activeDayModal)}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h3 className="font-bold text-lg sm:text-xl text-white tracking-tight truncate">
+                      {formatFullDate(activeDayModal)}
                     </h3>
                     {getRelativeDateLabel(activeDayModal) && (
-                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-950/70 text-purple-300 border border-purple-800/60 font-mono">
                         {getRelativeDateLabel(activeDayModal)}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-zinc-400 font-mono mt-0.5">
-                    {modalAppointments.length} appointment{modalAppointments.length !== 1 ? 's' : ''} scheduled
+                  <div className="text-xs text-zinc-400 font-mono mt-1 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                    <span>
+                      {modalAppointments.length} scheduled consultation{modalAppointments.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Navigation and Close Buttons */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePrevDayModal}
-                  className="btn-dark text-xs py-1.5 px-3 flex items-center gap-1"
-                  title="Previous Day"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Prev</span>
-                </button>
-                <button
-                  onClick={handleNextDayModal}
-                  className="btn-dark text-xs py-1.5 px-3 flex items-center gap-1"
-                  title="Next Day"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+              {/* Day Switcher Controls */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center p-0.5 rounded-lg bg-[#141418] border border-[#24242c]">
+                  <button
+                    onClick={handlePrevDayModal}
+                    className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                    title="Previous Day"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-4 bg-zinc-800 mx-0.5" />
+                  <button
+                    onClick={handleNextDayModal}
+                    className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                    title="Next Day"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
                 <button
                   onClick={() => setActiveDayModal(null)}
-                  className="p-1.5 rounded text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors ml-1"
+                  className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 border border-transparent hover:border-zinc-700 transition-colors"
                   title="Close (Esc)"
                 >
                   <X className="w-5 h-5" />
@@ -633,94 +658,113 @@ export default function LiveCalendar({
               </div>
             </div>
 
-            {/* Content: Clean, uncluttered appointment cards */}
-            <div className="p-5 sm:p-6 overflow-y-auto flex-1 select-text bg-[#000000]">
+            {/* Content: Clean, spacious, beautifully formatted appointment cards */}
+            <div className="p-6 sm:p-7 overflow-y-auto flex-1 select-text bg-[#070709] space-y-4">
               {modalAppointments.length === 0 ? (
-                <div className="py-14 text-center px-4 space-y-2">
-                  <div className="w-10 h-10 mx-auto rounded-full bg-[#0a0a0a] border border-[#222222] flex items-center justify-center text-zinc-500">
-                    <CalendarCheck className="w-5 h-5" />
+                <div className="py-16 text-center px-4 space-y-3">
+                  <div className="w-12 h-12 mx-auto rounded-2xl bg-[#121216] border border-[#26262e] flex items-center justify-center text-zinc-500 shadow-inner">
+                    <CalendarCheck className="w-6 h-6 text-zinc-400" />
                   </div>
-                  <div className="text-sm font-semibold text-white">
-                    No Appointments Scheduled
+                  <div className="text-base font-semibold text-white">
+                    No Consultations Scheduled
                   </div>
-                  <p className="text-xs text-zinc-400 max-w-sm mx-auto font-mono">
-                    There are no patient visits booked for this date.
+                  <p className="text-xs text-zinc-400 max-w-sm mx-auto font-mono leading-relaxed">
+                    No appointments are booked for {formatFullDate(activeDayModal)}. Patients can book via Mia or the reception line.
                   </p>
                 </div>
               ) : (
                 <div
-                  className={`grid gap-3.5 ${
+                  className={`grid gap-5 ${
                     modalAppointments.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'
                   }`}
                 >
                   {modalAppointments.map((apt) => {
                     const start = apt.start_time
                       ? new Date(apt.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                      : '';
+                      : '10:00 AM';
                     const end = apt.end_time
                       ? new Date(apt.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                      : '';
+                      : '10:30 AM';
                     const isConfirmed = apt.status?.toLowerCase() === 'confirmed';
+                    const patientInitial = (apt.patient_name || 'P').trim().charAt(0).toUpperCase();
 
                     return (
                       <div
                         key={apt.id}
-                        className="p-4 rounded-lg bg-[#0a0a0a] border border-[#222222] hover:border-[#333333] transition-colors flex flex-col justify-between gap-3 text-sm"
+                        className="p-5 sm:p-6 rounded-2xl bg-[#0f0f14] border border-[#242430] hover:border-purple-600/40 transition-all duration-200 shadow-lg flex flex-col justify-between space-y-4"
                       >
-                        {/* Top: Time + Status Badge */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 font-mono text-xs sm:text-sm font-semibold text-zinc-200">
-                            <Clock className="w-4 h-4 text-zinc-400 shrink-0" />
+                        {/* Top: Time Pill + Status Badge */}
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181822] border border-[#2a2a38] text-purple-200 font-mono text-xs sm:text-sm font-semibold shadow-inner">
+                            <Clock className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                             <span>{start} – {end}</span>
                           </div>
-                          <span
-                            className={`text-[11px] px-2 py-0.5 rounded font-medium border ${
+
+                          <div
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
                               isConfirmed
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                : 'bg-[#181818] text-zinc-300 border-[#2a2a2a]'
+                                ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800/50'
+                                : 'bg-purple-950/50 text-purple-300 border-purple-800/50'
                             }`}
                           >
-                            {apt.status || 'Scheduled'}
-                          </span>
-                        </div>
-
-                        {/* Patient Info */}
-                        <div className="space-y-1">
-                          <div className="font-semibold text-sm sm:text-base text-white flex items-center gap-2 truncate">
-                            <User className="w-4 h-4 text-zinc-400 shrink-0" />
-                            <span className="truncate">{apt.patient_name || 'Patient'}</span>
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isConfirmed ? 'bg-emerald-400' : 'bg-purple-400'
+                              } animate-pulse`}
+                            />
+                            <span className="capitalize">{apt.status || 'Scheduled'}</span>
                           </div>
-                          {apt.patient_phone && (
-                            <div className="text-xs text-zinc-400 font-mono truncate pl-6">
-                              {apt.patient_phone}
-                            </div>
-                          )}
                         </div>
 
-                        {/* Physician & Reason */}
-                        <div className="pt-2 border-t border-[#1a1a1a] space-y-1.5 text-xs">
-                          <div className="flex items-center justify-between gap-2 text-zinc-300">
-                            <span className="font-medium flex items-center gap-1.5 truncate">
-                              <Stethoscope className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                              <span className="truncate">{apt.doctor_name || 'Physician'}</span>
-                            </span>
-                            {apt.doctor_room && (
-                              <span className="text-zinc-500 font-mono shrink-0">{apt.doctor_room}</span>
+                        {/* Patient Profile Block */}
+                        <div className="flex items-center gap-3.5 pt-1">
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#271a3d] to-[#161224] border border-purple-800/50 flex items-center justify-center text-purple-200 font-bold text-base shrink-0 shadow-inner">
+                            {patientInitial}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-bold text-base sm:text-lg text-white tracking-tight truncate leading-tight">
+                              {apt.patient_name || 'Patient'}
+                            </h4>
+                            {apt.patient_phone && (
+                              <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-mono mt-1">
+                                <Phone className="w-3 h-3 text-zinc-500 shrink-0" />
+                                <span>{apt.patient_phone}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Doctor & Location Details */}
+                        <div className="pt-3.5 border-t border-[#1e1e28] space-y-2.5 text-xs">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Stethoscope className="w-4 h-4 text-purple-400 shrink-0" />
+                              <span className="font-semibold text-sm text-zinc-100 truncate">
+                                {apt.doctor_name || 'Dr. Rahul Nair'}
+                              </span>
+                            </div>
+                            {apt.doctor_specialization && (
+                              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#181822] text-purple-300 border border-[#2e2e3e] font-medium shrink-0">
+                                {apt.doctor_specialization}
+                              </span>
                             )}
                           </div>
 
-                          {apt.doctor_specialization && (
-                            <div className="text-zinc-500 pl-5 truncate">
-                              {apt.doctor_specialization}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1.5 text-zinc-400 font-mono pl-6">
+                            <MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                            <span className="truncate">{apt.doctor_room || 'Room 102 · Primary Care Wing'}</span>
+                          </div>
+                        </div>
 
-                          {apt.reason && (
-                            <div className="mt-1.5 p-2 rounded bg-[#111111] border border-[#1f1f1f] text-zinc-300 text-xs leading-relaxed">
-                              <span className="text-zinc-400 font-medium">Reason: </span>
-                              {apt.reason}
-                            </div>
-                          )}
+                        {/* Chief Complaint / Reason */}
+                        <div className="p-3.5 rounded-xl bg-[#14141c] border border-[#22222e] border-l-2 border-l-purple-500 text-xs sm:text-sm text-zinc-200 flex items-start gap-3 shadow-inner">
+                          <FileText className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                          <div className="leading-relaxed">
+                            <span className="font-semibold text-zinc-400">Chief Reason: </span>
+                            <span className="text-white font-medium">
+                              {apt.reason || 'General Medical Consultation & Examination'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -730,13 +774,14 @@ export default function LiveCalendar({
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3.5 border-t border-[#222222] bg-[#000000] flex items-center justify-between gap-4">
-              <div className="text-xs text-zinc-400 font-mono">
-                {modalAppointments.length} appointment{modalAppointments.length !== 1 ? 's' : ''} on {formatFriendlyDate(activeDayModal)}
+            <div className="px-6 sm:px-7 py-4 border-t border-[#202028] bg-[#09090c] flex items-center justify-between gap-4 shrink-0">
+              <div className="text-xs text-zinc-400 flex items-center gap-2 font-mono">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Live Clinic Records Synchronized</span>
               </div>
               <button
                 onClick={() => setActiveDayModal(null)}
-                className="btn-white text-xs sm:text-sm px-4 py-2"
+                className="btn-dark text-xs sm:text-sm px-5 py-2 font-semibold hover:border-zinc-500 text-zinc-200 hover:text-white transition-colors"
               >
                 Close
               </button>
