@@ -1,0 +1,9 @@
+{
+  "google_calendar_enabled": false,
+  "admin_pin": "admin123",
+  "clinic_name": "ABC Health Care",
+  "working_hours": "09:00 - 17:00",
+  "slot_duration_minutes": 30,
+  "timezone": "Asia/Kolkata",
+  "sync_on_booking": true
+}

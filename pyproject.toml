@@ -1,0 +1,16 @@
+[project]
+name = "ai-receptionist"
+version = "0.1.0"
+description = "AI Medical Virtual Receptionist backend and clinical dashboard for ABC Health Care"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "asyncpg>=0.32.0",
+    "dotenv>=0.9.9",
+    "gcsa>=2.7.0",
+    "livekit-agents[silero]~=1.8",
+    "livekit-plugins-ai-coustics>=0.3.5",
+    "livekit-plugins-openai>=1.8.8",
+    "livekit-plugins-silero>=1.8.8",
+    "openai>=3.35.1",
+]
