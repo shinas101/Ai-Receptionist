@@ -15,6 +15,8 @@ DATA_DIR = BASE_DIR / "data"
 SQLITE_DB_PATH = DATA_DIR / "clinic.db"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/ai_receptionist")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Doctor seed data
 SEED_DOCTORS = [
@@ -426,8 +428,11 @@ async def init_db():
     # Attempt PostgreSQL connection
     try:
         import asyncpg
+        target_db_url = os.getenv("DATABASE_URL", DATABASE_URL)
+        if target_db_url.startswith("postgres://"):
+            target_db_url = target_db_url.replace("postgres://", "postgresql://", 1)
         pool = await asyncpg.create_pool(
-            DATABASE_URL,
+            target_db_url,
             min_size=1,
             max_size=5,
             command_timeout=3.0,

@@ -282,6 +282,7 @@ def create_app():
 
 
 if __name__ == "__main__":
+    port = int(os.getenv("PORT", "8080"))
     app = create_app()
-    print("ABC Health Care Clinical API running on http://localhost:8080")
-    web.run_app(app, host="0.0.0.0", port=8080)
+    print(f"ABC Health Care Clinical API running on http://0.0.0.0:{port}")
+    web.run_app(app, host="0.0.0.0", port=port)

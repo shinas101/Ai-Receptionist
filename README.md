@@ -139,12 +139,39 @@ Deploy scalable worker replicas using the Kubernetes deployment manifest in `k8s
 kubectl apply -f k8s/agent-deployment.yaml
 ```
 
+### 4. Heroku Deployment
+The project is fully Heroku-compatible with `Procfile`, `runtime.txt`, `app.json`, and dynamic `$PORT` binding:
+
+```bash
+# 1. Create Heroku app and attach PostgreSQL
+heroku create ai-receptionist-clinic
+heroku addons:create heroku-postgresql:essential-0
+
+# 2. Configure production environment secrets
+heroku config:set \
+  LIVEKIT_URL="wss://your-project.livekit.cloud" \
+  LIVEKIT_API_KEY="your_api_key" \
+  LIVEKIT_API_SECRET="your_api_secret" \
+  OPENAI_API_KEY="your_openai_key" \
+  ADMIN_PIN="1234"
+
+# 3. Deploy code and scale web API + background agent worker
+git push heroku main
+heroku ps:scale web=1 worker=1
+```
+
+*(You can also deploy with 1-click via the Heroku Dashboard using `app.json`).*
+
 ---
 
 ## 🛠️ Project Structure
 
 ```
 ai-receptionist/
+├── Procfile               # Heroku process types (web: token_server.py, worker: agent.py start)
+├── runtime.txt            # Heroku Python runtime specification (python-3.12.7)
+├── app.json               # Heroku app manifest for one-click button deployments
+├── requirements.txt       # Production pip dependencies for buildpacks
 ├── Dockerfile             # Production container for LiveKit Agent worker (agent.py start)
 ├── Dockerfile.api         # Production container for Token & Clinical REST API
 ├── docker-compose.yml     # Local/VPS orchestration (Postgres + pgvector, API, Agent)

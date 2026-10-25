@@ -1,0 +1,58 @@
+{
+  "name": "ai-receptionist",
+  "description": "AI Medical Virtual Receptionist & Clinical Management API for ABC Health Care",
+  "repository": "https://github.com/shinas101/Ai-Receptionist",
+  "keywords": [
+    "python",
+    "livekit",
+    "voice-ai",
+    "webrtc",
+    "healthcare",
+    "receptionist"
+  ],
+  "env": {
+    "LIVEKIT_URL": {
+      "description": "LiveKit Cloud WebSocket URL (e.g. wss://<project>.livekit.cloud)",
+      "required": true
+    },
+    "LIVEKIT_API_KEY": {
+      "description": "LiveKit API Key",
+      "required": true
+    },
+    "LIVEKIT_API_SECRET": {
+      "description": "LiveKit API Secret",
+      "required": true
+    },
+    "OPENAI_API_KEY": {
+      "description": "OpenAI API Key for Realtime speech models and LLM reasoning",
+      "required": true
+    },
+    "ADMIN_PIN": {
+      "description": "Security PIN for administrative clinical modifications",
+      "value": "1234",
+      "required": false
+    },
+    "AI_COUSTICS_KEY": {
+      "description": "AiCoustics API Key for clinical voice clarity (optional)",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "eco"
+    },
+    "worker": {
+      "quantity": 1,
+      "size": "eco"
+    }
+  },
+  "addons": [
+    "heroku-postgresql:essential-0"
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+}
