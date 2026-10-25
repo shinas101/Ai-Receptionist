@@ -16,10 +16,11 @@ from app.memory.db import init_db, close_db
 from app.memory.tools import MemoryTools
 
 
+import os
 load_dotenv(".env")
 
-
-server = AgentServer()
+NUM_IDLE_PROCESSES = int(os.getenv("NUM_IDLE_PROCESSES", "1"))
+server = AgentServer(num_idle_processes=NUM_IDLE_PROCESSES)
 
 
 def prewarm(proc: agents.JobProcess):

@@ -272,8 +272,42 @@ async def get_stats_handler(request: web.Request):
     }, headers=cors_headers())
 
 
+FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
+
+
+async def index_handler(request: web.Request):
+    index_file = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(index_file):
+        return web.FileResponse(index_file)
+    return web.json_response({
+        "status": "online",
+        "service": "ABC Health Care Clinical API",
+        "endpoints": ["/api/token", "/api/doctors", "/api/appointments", "/api/stats", "/api/settings"]
+    }, headers=cors_headers(request))
+
+
+async def favicon_handler(request: web.Request):
+    fav_file = os.path.join(FRONTEND_DIST, "favicon.svg")
+    if os.path.exists(fav_file):
+        return web.FileResponse(fav_file)
+    return web.Response(status=204)
+
+
 def create_app():
     app = web.Application()
+
+    # Serve static frontend assets if built
+    if os.path.exists(os.path.join(FRONTEND_DIST, "assets")):
+        app.router.add_static("/assets", os.path.join(FRONTEND_DIST, "assets"))
+    if os.path.exists(os.path.join(FRONTEND_DIST, "icons.svg")):
+        app.router.add_get("/icons.svg", lambda req: web.FileResponse(os.path.join(FRONTEND_DIST, "icons.svg")))
+    app.router.add_get("/favicon.ico", favicon_handler)
+    app.router.add_get("/favicon.svg", favicon_handler)
+
+    # Root web page & SPA dashboard
+    app.router.add_get("/", index_handler)
+    app.router.add_get("/dashboard", index_handler)
+
     app.router.add_get("/api/token", get_token)
     app.router.add_options("/api/token", options_handler)
     app.router.add_get("/token", get_token)
