@@ -385,7 +385,7 @@ export default function AgentSidePanel({ livekit }) {
         {/* Input Message Form */}
         <form
           onSubmit={handleSendMessage}
-          className="border-t border-[#222222] bg-[#050505] p-2.5 sm:p-3 pb-20 sm:pb-3 flex items-center gap-2 shrink-0"
+          className="border-t border-[#222222] bg-[#050505] p-2.5 sm:p-3 flex items-center gap-2 shrink-0"
         >
           <input
             type="text"

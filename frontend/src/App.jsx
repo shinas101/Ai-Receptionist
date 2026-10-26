@@ -101,7 +101,7 @@ export default function App() {
       />
 
       {/* Main Single-Window Workspace: Mobile full view per tab, Desktop side-by-side */}
-      <main className="flex-1 min-h-0 p-2 sm:p-3 lg:p-4.5 pb-28 sm:pb-36 flex flex-col lg:flex-row gap-3 lg:gap-4 overflow-hidden relative">
+      <main className="flex-1 min-h-0 px-2 pt-2 pb-28 sm:px-3 sm:pt-3 sm:pb-32 lg:p-4 lg:pb-24 flex flex-col lg:flex-row gap-3 lg:gap-4 overflow-hidden relative">
         {/* Left Panel: Live Calendar & Specialists (Full view on mobile when active, side-by-side on lg) */}
         <section
           className={`flex-1 min-h-0 flex flex-col h-full rounded-xl sm:rounded-2xl border border-[#222228] bg-[#000000] overflow-hidden shadow-2xl ${
@@ -122,7 +122,7 @@ export default function App() {
 
         {/* Right Panel: Mia Voice AI Receptionist (Full view on mobile when active, side-by-side on lg) */}
         <aside
-          className={`w-full lg:w-[380px] xl:w-[410px] shrink-0 flex flex-col h-full rounded-xl sm:rounded-2xl border border-[#222228] bg-[#000000] overflow-hidden shadow-2xl ${
+          className={`w-full lg:w-[380px] xl:w-[410px] flex-1 lg:flex-none min-h-0 flex flex-col h-full rounded-xl sm:rounded-2xl border border-[#222228] bg-[#000000] overflow-hidden shadow-2xl ${
             mobileTab === 'agent' ? 'flex' : 'hidden lg:flex'
           }`}
         >
