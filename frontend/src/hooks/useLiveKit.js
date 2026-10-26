@@ -612,11 +612,6 @@ export function useLiveKit() {
 
   useEffect(() => {
     return () => {
-      if (speechRecognitionRef.current) {
-        try {
-          speechRecognitionRef.current.abort();
-        } catch {}
-      }
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (roomRef.current) roomRef.current.disconnect();
     };
