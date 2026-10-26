@@ -28,6 +28,8 @@ export default function App() {
 
   // Mobile navigation active tab: 'calendar' | 'agent'
   const [mobileTab, setMobileTab] = useState('calendar');
+  // Controlled tab for LiveCalendar: 'calendar' | 'doctors'
+  const [calendarTab, setCalendarTab] = useState('calendar');
 
   const loadDoctors = useCallback(async () => {
     try {
@@ -88,7 +90,7 @@ export default function App() {
   };
 
   return (
-    <div className="h-[100dvh] w-screen flex flex-col bg-[#000000] text-white overflow-hidden select-none">
+    <div className="h-[100dvh] w-screen flex flex-col bg-[#000000] text-white overflow-hidden select-none relative">
       {/* Sleek Minimalist Header with Live Metrics */}
       <Header
         stats={stats}
@@ -98,43 +100,8 @@ export default function App() {
         onToggleCall={handleToggleCall}
       />
 
-      {/* Mobile-First Segmented Navigation Bar (Visible only on < lg screens) */}
-      <div className="lg:hidden shrink-0 px-2.5 py-1.5 bg-[#08080a] border-b border-[#1c1c22] flex items-center gap-2 z-20">
-        <button
-          onClick={() => setMobileTab('calendar')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-2 ${
-            mobileTab === 'calendar'
-              ? 'bg-[#181824] text-white border border-[#343446] shadow-sm'
-              : 'text-zinc-400 hover:text-white bg-[#0e0e12] border border-transparent'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5 text-purple-400" />
-          <span>Calendar</span>
-          {appointments.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-[#22222e] text-zinc-300">
-              {appointments.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setMobileTab('agent')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-2 relative ${
-            mobileTab === 'agent'
-              ? 'bg-[#181824] text-white border border-[#343446] shadow-sm'
-              : 'text-zinc-400 hover:text-white bg-[#0e0e12] border border-transparent'
-          }`}
-        >
-          <Mic className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400' : 'text-zinc-400'}`} />
-          <span>Mia Receptionist</span>
-          {isConnected && (
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          )}
-        </button>
-      </div>
-
       {/* Main Single-Window Workspace: Mobile full view per tab, Desktop side-by-side */}
-      <main className="flex-1 min-h-0 p-2 sm:p-3 lg:p-4.5 flex flex-col lg:flex-row gap-3 lg:gap-4 overflow-hidden relative">
+      <main className="flex-1 min-h-0 p-2 sm:p-3 lg:p-4.5 pb-20 sm:pb-22 lg:pb-20 flex flex-col lg:flex-row gap-3 lg:gap-4 overflow-hidden relative">
         {/* Left Panel: Live Calendar & Specialists (Full view on mobile when active, side-by-side on lg) */}
         <section
           className={`flex-1 min-h-0 flex flex-col h-full rounded-xl sm:rounded-2xl border border-[#222228] bg-[#000000] overflow-hidden shadow-2xl ${
@@ -148,6 +115,8 @@ export default function App() {
             onSelectDate={setSelectedDate}
             selectedDoctorId={selectedDoctorId}
             onChangeDoctor={setSelectedDoctorId}
+            activeTab={calendarTab}
+            onTabChange={setCalendarTab}
           />
         </section>
 
@@ -159,57 +128,119 @@ export default function App() {
         >
           <AgentSidePanel livekit={livekit} />
         </aside>
+      </main>
 
-        {/* Floating Mini-Call Controller on Mobile when user browses Calendar while in active consultation */}
-        {mobileTab === 'calendar' && isConnected && (
-          <div className="lg:hidden absolute bottom-3 left-3 right-3 z-30 p-2.5 rounded-xl bg-[#0c0c14]/95 border border-purple-500/40 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.9)] flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-200">
-            <div
-              onClick={() => setMobileTab('agent')}
-              className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+      {/* Small Floating Dock (Bottom Navbar) */}
+      <nav
+        aria-label="Floating dock navigation"
+        className="fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-40 bg-[#09090f]/90 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.9),0_0_24px_rgba(168,85,247,0.18)] rounded-2xl p-1.5 flex items-center gap-1 sm:gap-1.5 max-w-[95vw] select-none"
+      >
+        {/* Dock Item 1: Calendar */}
+        <button
+          onClick={() => {
+            setMobileTab('calendar');
+            setCalendarTab('calendar');
+          }}
+          className={`px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
+            mobileTab === 'calendar' && calendarTab === 'calendar'
+              ? 'bg-[#181826] text-white border border-[#3b3b52] shadow-sm'
+              : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+          }`}
+          title="Clinical Calendar"
+        >
+          <Calendar className="w-4 h-4 text-purple-400 shrink-0" />
+          <span className="hidden xs:inline">Calendar</span>
+          {appointments.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-[#222230] text-zinc-300">
+              {appointments.length}
+            </span>
+          )}
+        </button>
+
+        {/* Dock Item 2: Specialists */}
+        <button
+          onClick={() => {
+            setMobileTab('calendar');
+            setCalendarTab('doctors');
+          }}
+          className={`px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
+            mobileTab === 'calendar' && calendarTab === 'doctors'
+              ? 'bg-[#181826] text-white border border-[#3b3b52] shadow-sm'
+              : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+          }`}
+          title="Physicians Directory"
+        >
+          <Stethoscope className="w-4 h-4 text-purple-400 shrink-0" />
+          <span className="hidden xs:inline">Specialists</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-[#222230] text-zinc-300">
+            {doctors.length}
+          </span>
+        </button>
+
+        {/* Dock Item 3: Mia Voice AI */}
+        <button
+          onClick={() => setMobileTab('agent')}
+          className={`px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer relative ${
+            mobileTab === 'agent'
+              ? 'bg-[#181826] text-white border border-[#3b3b52] shadow-sm'
+              : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+          }`}
+          title="Mia AI Voice Receptionist"
+        >
+          <Mic className={`w-4 h-4 shrink-0 ${isConnected ? 'text-emerald-400' : 'text-purple-400'}`} />
+          <span className="hidden xs:inline">Mia AI</span>
+          {isConnected && (
+            <div className="flex items-center gap-1">
+              {livekit.isAgentSpeaking ? (
+                <span className="flex items-end gap-0.5 h-3">
+                  <span className="w-0.5 h-1.5 bg-emerald-400 animate-pulse" />
+                  <span className="w-0.5 h-3 bg-emerald-400 animate-pulse delay-75" />
+                  <span className="w-0.5 h-2 bg-emerald-400 animate-pulse delay-150" />
+                </span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              )}
+            </div>
+          )}
+        </button>
+
+        {/* Divider */}
+        <div className="w-px h-5 bg-white/15 mx-0.5 sm:mx-1" />
+
+        {/* Dock Item 4: Call Action Controls */}
+        {!isConnected ? (
+          <button
+            onClick={handleToggleCall}
+            className="px-3 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black font-semibold text-xs tracking-wide transition-all flex items-center gap-1.5 shadow-md cursor-pointer shrink-0"
+            title="Start Consultation with Mia"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+            <span>Call Mia</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={livekit.toggleMute}
+              className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer ${
+                livekit.isMuted
+                  ? 'bg-rose-950/80 border-rose-600 text-rose-300'
+                  : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
+              }`}
+              title={livekit.isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
             >
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                  <span>Mia Active Call</span>
-                  {livekit.isAgentSpeaking && (
-                    <span className="text-[10px] font-mono font-normal text-purple-300">· Speaking</span>
-                  )}
-                </p>
-                <p className="text-[10px] text-zinc-400 font-mono truncate">
-                  Tap to view dialogue & visualizer →
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={livekit.toggleMute}
-                className={`p-2 rounded-lg border text-xs font-mono transition-colors ${
-                  livekit.isMuted
-                    ? 'bg-rose-950/80 border-rose-600 text-rose-300'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-200'
-                }`}
-                title={livekit.isMuted ? 'Unmute Mic' : 'Mute Mic'}
-              >
-                {livekit.isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-              </button>
-              <button
-                onClick={() => setMobileTab('agent')}
-                className="px-2.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold"
-              >
-                Open
-              </button>
-              <button
-                onClick={livekit.disconnect}
-                className="p-2 rounded-lg bg-red-600 hover:bg-red-500 text-white"
-                title="End Call"
-              >
-                <PhoneOff className="w-3.5 h-3.5" />
-              </button>
-            </div>
+              {livekit.isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5 text-emerald-400" />}
+            </button>
+            <button
+              onClick={livekit.disconnect}
+              className="px-2.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs flex items-center gap-1 shadow-sm cursor-pointer"
+              title="End Consultation"
+            >
+              <PhoneOff className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">End</span>
+            </button>
           </div>
         )}
-      </main>
+      </nav>
     </div>
   );
 }

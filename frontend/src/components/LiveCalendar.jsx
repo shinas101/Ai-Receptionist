@@ -26,8 +26,12 @@ export default function LiveCalendar({
   onSelectDate,
   selectedDoctorId,
   onChangeDoctor,
+  activeTab: controlledActiveTab,
+  onTabChange: controlledOnTabChange,
 }) {
-  const [activeTab, setActiveTab] = useState('calendar'); // 'calendar' | 'doctors'
+  const [internalTab, setInternalTab] = useState('calendar'); // 'calendar' | 'doctors'
+  const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : internalTab;
+  const setActiveTab = controlledOnTabChange || setInternalTab;
   const [doctorSearch, setDoctorSearch] = useState('');
   const [currentMonthDate, setCurrentMonthDate] = useState(() => {
     return selectedDate ? new Date(selectedDate) : new Date();
