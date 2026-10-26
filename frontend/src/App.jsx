@@ -4,7 +4,7 @@ import LiveCalendar from './components/LiveCalendar';
 import AgentSidePanel from './components/AgentSidePanel';
 import { useLiveKit } from './hooks/useLiveKit';
 import { api, FALLBACK_DOCTORS } from './services/api';
-import { Calendar, Mic, MicOff, PhoneOff, Stethoscope } from 'lucide-react';
+import { Calendar, Mic, MicOff, PhoneOff, Stethoscope, Sparkles } from 'lucide-react';
 
 export default function App() {
   const livekit = useLiveKit();
@@ -26,8 +26,8 @@ export default function App() {
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Mobile navigation active tab: 'calendar' | 'agent'
-  const [mobileTab, setMobileTab] = useState('calendar');
+  // Mobile navigation active tab: default to 'agent' (Mia AI Receptionist)
+  const [mobileTab, setMobileTab] = useState('agent');
   // Controlled tab for LiveCalendar: 'calendar' | 'doctors'
   const [calendarTab, setCalendarTab] = useState('calendar');
 

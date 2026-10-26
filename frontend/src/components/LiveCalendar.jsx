@@ -229,33 +229,27 @@ export default function LiveCalendar({
     <div className="flex flex-col h-full bg-[#000000] text-white select-none relative overflow-hidden">
       {/* Top Header Bar with Minimalist Tabs and Month Controls */}
       <div className="h-auto sm:h-13 shrink-0 px-3 sm:px-5 py-2 sm:py-0 border-b border-[#222222] bg-[#000000] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
-        {/* Left: Minimal Tabs Switcher (Calendar vs Doctors) */}
-        <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#0d0d0f] border border-[#222226] shrink-0">
-          <button
-            onClick={() => setActiveTab('calendar')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 ${
-              activeTab === 'calendar'
-                ? 'bg-[#1e1e24] text-white shadow-sm border border-[#303038]'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <CalendarIcon className="w-3.5 h-3.5" />
-            <span>Calendar</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('doctors')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 ${
-              activeTab === 'doctors'
-                ? 'bg-[#1e1e24] text-white shadow-sm border border-[#303038]'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Stethoscope className="w-3.5 h-3.5" />
-            <span>Specialists</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 font-mono">
-              {doctors.length}
-            </span>
-          </button>
+        {/* Left: View Identity Title (Tab switching moved to floating dock) */}
+        <div className="flex items-center gap-2 shrink-0">
+          {activeTab === 'calendar' ? (
+            <>
+              <CalendarIcon className="w-4 h-4 text-purple-400 shrink-0" />
+              <h2 className="font-bold text-sm text-white tracking-tight">Clinical Calendar</h2>
+              {appointments.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#161620] border border-[#262635] text-zinc-300 font-mono">
+                  {appointments.length}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <Stethoscope className="w-4 h-4 text-purple-400 shrink-0" />
+              <h2 className="font-bold text-sm text-white tracking-tight">Physicians & Specialists</h2>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#161620] border border-[#262635] text-zinc-300 font-mono">
+                {doctors.length}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Right Header Controls (Conditional by Active Tab) */}
