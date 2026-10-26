@@ -101,7 +101,7 @@ export default function App() {
       />
 
       {/* Main Single-Window Workspace: Mobile full view per tab, Desktop side-by-side */}
-      <main className="flex-1 min-h-0 p-2 sm:p-3 lg:p-4.5 pb-20 sm:pb-22 lg:pb-20 flex flex-col lg:flex-row gap-3 lg:gap-4 overflow-hidden relative">
+      <main className="flex-1 min-h-0 p-2 sm:p-3 lg:p-4.5 pb-24 sm:pb-28 flex flex-col lg:flex-row gap-3 lg:gap-4 overflow-hidden relative">
         {/* Left Panel: Live Calendar & Specialists (Full view on mobile when active, side-by-side on lg) */}
         <section
           className={`flex-1 min-h-0 flex flex-col h-full rounded-xl sm:rounded-2xl border border-[#222228] bg-[#000000] overflow-hidden shadow-2xl ${
@@ -130,71 +130,29 @@ export default function App() {
         </aside>
       </main>
 
-      {/* Small Floating Dock (Bottom Navbar) */}
+      {/* Prominent Floating Dock Navbar (Built directly on website design system) */}
       <nav
-        aria-label="Floating dock navigation"
-        className="fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-40 bg-[#09090f]/90 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.9),0_0_24px_rgba(168,85,247,0.18)] rounded-2xl p-1.5 flex items-center gap-1 sm:gap-1.5 max-w-[95vw] select-none"
+        aria-label="Application dock navigation"
+        className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#0a0a0e]/95 backdrop-blur-xl border border-[#262630] shadow-[0_20px_50px_rgba(0,0,0,0.95)] rounded-xl sm:rounded-2xl p-2 sm:p-2.5 flex items-center gap-1.5 sm:gap-2.5 max-w-[calc(100vw-1.5rem)] select-none"
       >
-        {/* Dock Item 1: Calendar */}
-        <button
-          onClick={() => {
-            setMobileTab('calendar');
-            setCalendarTab('calendar');
-          }}
-          className={`px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
-            mobileTab === 'calendar' && calendarTab === 'calendar'
-              ? 'bg-[#181826] text-white border border-[#3b3b52] shadow-sm'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
-          }`}
-          title="Clinical Calendar"
-        >
-          <Calendar className="w-4 h-4 text-purple-400 shrink-0" />
-          <span className="hidden xs:inline">Calendar</span>
-          {appointments.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-[#222230] text-zinc-300">
-              {appointments.length}
-            </span>
-          )}
-        </button>
-
-        {/* Dock Item 2: Specialists */}
-        <button
-          onClick={() => {
-            setMobileTab('calendar');
-            setCalendarTab('doctors');
-          }}
-          className={`px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
-            mobileTab === 'calendar' && calendarTab === 'doctors'
-              ? 'bg-[#181826] text-white border border-[#3b3b52] shadow-sm'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
-          }`}
-          title="Physicians Directory"
-        >
-          <Stethoscope className="w-4 h-4 text-purple-400 shrink-0" />
-          <span className="hidden xs:inline">Specialists</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-[#222230] text-zinc-300">
-            {doctors.length}
-          </span>
-        </button>
-
-        {/* Dock Item 3: Mia Voice AI */}
+        {/* Dock Item 1: Mia AI Voice Receptionist */}
         <button
           onClick={() => setMobileTab('agent')}
-          className={`px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer relative ${
+          className={`px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center gap-2 cursor-pointer ${
             mobileTab === 'agent'
-              ? 'bg-[#181826] text-white border border-[#3b3b52] shadow-sm'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+              ? 'bg-[#181824] text-white border border-[#3b3b50] shadow-sm'
+              : 'text-zinc-400 hover:text-white hover:bg-[#121218] border border-transparent'
           }`}
           title="Mia AI Voice Receptionist"
         >
-          <Mic className={`w-4 h-4 shrink-0 ${isConnected ? 'text-emerald-400' : 'text-purple-400'}`} />
-          <span className="hidden xs:inline">Mia AI</span>
+          <Mic className={`w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 ${isConnected ? 'text-emerald-400' : 'text-purple-400'}`} />
+          <span>Mia AI</span>
           {isConnected && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 ml-0.5">
               {livekit.isAgentSpeaking ? (
                 <span className="flex items-end gap-0.5 h-3">
-                  <span className="w-0.5 h-1.5 bg-emerald-400 animate-pulse" />
-                  <span className="w-0.5 h-3 bg-emerald-400 animate-pulse delay-75" />
+                  <span className="w-0.5 h-2 bg-emerald-400 animate-pulse" />
+                  <span className="w-0.5 h-3.5 bg-emerald-400 animate-pulse delay-75" />
                   <span className="w-0.5 h-2 bg-emerald-400 animate-pulse delay-150" />
                 </span>
               ) : (
@@ -204,38 +162,80 @@ export default function App() {
           )}
         </button>
 
-        {/* Divider */}
-        <div className="w-px h-5 bg-white/15 mx-0.5 sm:mx-1" />
+        {/* Dock Item 2: Calendar */}
+        <button
+          onClick={() => {
+            setMobileTab('calendar');
+            setCalendarTab('calendar');
+          }}
+          className={`px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center gap-2 cursor-pointer ${
+            mobileTab === 'calendar' && calendarTab === 'calendar'
+              ? 'bg-[#181824] text-white border border-[#3b3b50] shadow-sm'
+              : 'text-zinc-400 hover:text-white hover:bg-[#121218] border border-transparent'
+          }`}
+          title="Clinical Calendar"
+        >
+          <Calendar className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-purple-400 shrink-0" />
+          <span>Calendar</span>
+          {appointments.length > 0 && (
+            <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-[#1c1c28] border border-[#2c2c3e] text-zinc-300">
+              {appointments.length}
+            </span>
+          )}
+        </button>
 
-        {/* Dock Item 4: Call Action Controls */}
+        {/* Dock Item 3: Specialists */}
+        <button
+          onClick={() => {
+            setMobileTab('calendar');
+            setCalendarTab('doctors');
+          }}
+          className={`px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center gap-2 cursor-pointer ${
+            mobileTab === 'calendar' && calendarTab === 'doctors'
+              ? 'bg-[#181824] text-white border border-[#3b3b50] shadow-sm'
+              : 'text-zinc-400 hover:text-white hover:bg-[#121218] border border-transparent'
+          }`}
+          title="Physicians & Specialists Directory"
+        >
+          <Stethoscope className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-purple-400 shrink-0" />
+          <span className="hidden xs:inline">Specialists</span>
+          <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-[#1c1c28] border border-[#2c2c3e] text-zinc-300">
+            {doctors.length}
+          </span>
+        </button>
+
+        {/* Technical Border Divider */}
+        <div className="w-px h-6 sm:h-7 bg-[#272732] mx-1 sm:mx-1.5" />
+
+        {/* Dock Action Controls */}
         {!isConnected ? (
           <button
             onClick={handleToggleCall}
-            className="px-3 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black font-semibold text-xs tracking-wide transition-all flex items-center gap-1.5 shadow-md cursor-pointer shrink-0"
-            title="Start Consultation with Mia"
+            className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-white hover:bg-zinc-200 text-black font-semibold text-xs sm:text-sm tracking-wide transition-all flex items-center gap-2 shadow-md cursor-pointer shrink-0"
+            title="Start Voice Consultation with Mia"
           >
-            <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+            <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
             <span>Call Mia</span>
           </button>
         ) : (
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={livekit.toggleMute}
-              className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer ${
+              className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border text-xs sm:text-sm transition-colors cursor-pointer ${
                 livekit.isMuted
                   ? 'bg-rose-950/80 border-rose-600 text-rose-300'
-                  : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
+                  : 'bg-[#14141c] hover:bg-[#1c1c28] border-[#2a2a38] text-zinc-200'
               }`}
               title={livekit.isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
             >
-              {livekit.isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5 text-emerald-400" />}
+              {livekit.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-emerald-400" />}
             </button>
             <button
               onClick={livekit.disconnect}
-              className="px-2.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs flex items-center gap-1 shadow-sm cursor-pointer"
-              title="End Consultation"
+              className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-sm cursor-pointer"
+              title="End Voice Consultation"
             >
-              <PhoneOff className="w-3.5 h-3.5" />
+              <PhoneOff className="w-4 h-4" />
               <span className="hidden sm:inline">End</span>
             </button>
           </div>
