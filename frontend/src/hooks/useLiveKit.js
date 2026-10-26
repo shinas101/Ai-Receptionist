@@ -29,7 +29,6 @@ export function useLiveKit() {
   const animFrameRef = useRef(null);
   const audioElementRef = useRef(null);
   const localMicStreamRef = useRef(null);
-  const speechRecognitionRef = useRef(null);
 
   // Helper to normalize strings for robust deduplication (removes punctuation, casing, extra whitespace)
   const normalizeText = (str) =>
@@ -233,10 +232,16 @@ export function useLiveKit() {
         url: tokenRes.url,
       });
 
-      // Initialize LiveKit Room instance
+      // Initialize LiveKit Room instance with persistent audio options
       const room = new Room({
         adaptiveStream: true,
         dynacast: true,
+        stopLocalTrackOnUnpublish: false,
+        audioCaptureDefaults: {
+          autoGainControl: true,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
       });
       roomRef.current = room;
 
@@ -444,83 +449,32 @@ export function useLiveKit() {
       setConnectionState('connected');
       setAgentState('listening');
 
-      // 5. Browser-side Real-time Speech Recognition (instant client-side transcription fallback)
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        try {
-          const recognition = new SpeechRecognition();
-          recognition.continuous = true;
-          recognition.interimResults = true;
-          recognition.lang = 'en-US';
-
-          let currentSpeechTurnId = `patient-speech-${Date.now()}`;
-          recognition.onresult = (e) => {
-            let fullText = '';
-            let isFinal = false;
-
-            for (let i = e.resultIndex; i < e.results.length; ++i) {
-              const res = e.results[i];
-              if (res[0]?.transcript) {
-                fullText += (fullText ? ' ' : '') + res[0].transcript.trim();
-              }
-              if (res.isFinal) {
-                isFinal = true;
-              }
-            }
-
-            if (fullText.trim()) {
-              appendTranscript('Patient', fullText.trim(), 'user', isFinal, currentSpeechTurnId);
-            }
-
-            if (isFinal) {
-              // Rotate turn ID for subsequent utterance
-              currentSpeechTurnId = `patient-speech-${Date.now()}`;
-            }
-          };
-
-          recognition.onerror = (err) => {
-            if (err.error !== 'no-speech') {
-              console.warn('Web Speech API note:', err.error);
-            }
-          };
-
-          recognition.onend = () => {
-            if (roomRef.current && roomRef.current.state === 'connected' && !isMuted) {
-              try {
-                recognition.start();
-              } catch {}
-            }
-          };
-
-          recognition.start();
-          speechRecognitionRef.current = recognition;
-        } catch (sttErr) {
-          console.warn('SpeechRecognition initialization note:', sttErr);
-        }
-      }
-
-      // Local mic level monitoring
+      // 5. Persistent Local Mic Level Monitoring (uses existing LiveKit mic track, NO duplicate getUserMedia)
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        localMicStreamRef.current = stream;
-        const micCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const micAnalyser = micCtx.createAnalyser();
-        micAnalyser.fftSize = 32;
-        const micSource = micCtx.createMediaStreamSource(stream);
-        micSource.connect(micAnalyser);
-        const data = new Uint8Array(micAnalyser.frequencyBinCount);
+        const localTrackPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+        const micMediaTrack = localTrackPub?.track?.mediaStreamTrack;
+        if (micMediaTrack) {
+          const stream = new MediaStream([micMediaTrack]);
+          localMicStreamRef.current = stream;
+          const micCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const micAnalyser = micCtx.createAnalyser();
+          micAnalyser.fftSize = 32;
+          const micSource = micCtx.createMediaStreamSource(stream);
+          micSource.connect(micAnalyser);
+          const data = new Uint8Array(micAnalyser.frequencyBinCount);
 
-        const pollMic = () => {
-          if (roomRef.current && roomRef.current.state === 'connected') {
-            micAnalyser.getByteFrequencyData(data);
-            let s = 0;
-            for (let i = 0; i < data.length; i++) s += data[i];
-            const avg = (s / data.length) / 255;
-            setUserAudioLevel(Math.round(avg * 100));
-            requestAnimationFrame(pollMic);
-          }
-        };
-        pollMic();
+          const pollMic = () => {
+            if (roomRef.current && roomRef.current.state === 'connected') {
+              micAnalyser.getByteFrequencyData(data);
+              let s = 0;
+              for (let i = 0; i < data.length; i++) s += data[i];
+              const avg = (s / data.length) / 255;
+              setUserAudioLevel(Math.round(avg * 100));
+              requestAnimationFrame(pollMic);
+            }
+          };
+          pollMic();
+        }
       } catch (err) {
         console.warn('Local mic analysis note:', err);
       }
@@ -539,16 +493,10 @@ export function useLiveKit() {
       });
       appendTranscript('MIA', 'Hello! Thank you for calling ABC Health Care. My name is Mia. How can I assist you with your appointment today?', 'agent');
     }
-  }, [connectionState, appendTranscript, setupAudioAnalysis, isMuted]);
+  }, [connectionState, appendTranscript, setupAudioAnalysis]);
 
-  // Disconnect
+  // Disconnect cleanly
   const disconnect = useCallback(() => {
-    if (speechRecognitionRef.current) {
-      try {
-        speechRecognitionRef.current.abort();
-      } catch {}
-      speechRecognitionRef.current = null;
-    }
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
     }
@@ -557,7 +505,6 @@ export function useLiveKit() {
       audioElementRef.current = null;
     }
     if (localMicStreamRef.current) {
-      localMicStreamRef.current.getTracks().forEach((t) => t.stop());
       localMicStreamRef.current = null;
     }
     if (roomRef.current) {
@@ -573,23 +520,26 @@ export function useLiveKit() {
     setActiveToolCall(null);
   }, []);
 
-  // Toggle Mute
-  const toggleMute = useCallback(() => {
+  // Persistent Mute / Unmute: Keeps the WebRTC audio connection active without hardware restarts or browser beeps
+  const toggleMute = useCallback(async () => {
     const nextMute = !isMuted;
-    if (speechRecognitionRef.current) {
+    setIsMuted(nextMute);
+
+    if (roomRef.current?.localParticipant) {
       try {
-        if (nextMute) {
-          speechRecognitionRef.current.stop();
+        const micPub = roomRef.current.localParticipant.getTrackPublication(Track.Source.Microphone);
+        if (micPub?.track) {
+          if (nextMute) {
+            await micPub.track.mute();
+          } else {
+            await micPub.track.unmute();
+          }
         } else {
-          speechRecognitionRef.current.start();
+          await roomRef.current.localParticipant.setMicrophoneEnabled(!nextMute);
         }
-      } catch {}
-    }
-    if (roomRef.current && roomRef.current.localParticipant) {
-      roomRef.current.localParticipant.setMicrophoneEnabled(!nextMute);
-      setIsMuted(nextMute);
-    } else {
-      setIsMuted((prev) => !prev);
+      } catch (e) {
+        console.warn('Mute toggle note:', e);
+      }
     }
   }, [isMuted]);
 
