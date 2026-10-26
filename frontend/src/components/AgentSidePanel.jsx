@@ -133,7 +133,7 @@ export default function AgentSidePanel({ livekit }) {
       {/* Compact Visualizer & Call Button Card */}
       <div className="p-3.5 sm:p-4 border-b border-[#222222] bg-[#050505] flex flex-col items-center gap-3 shrink-0">
         {/* LiveKit Agent Audio Visualizer Aura (Unicorn Studio WebGL Shader) */}
-        <div className="flex items-center justify-center relative w-full aspect-square max-w-[140px] max-h-[140px]">
+        <div className="flex items-center justify-center relative w-full aspect-square max-w-[105px] max-h-[105px] sm:max-w-[140px] sm:max-h-[140px]">
           <AgentAudioVisualizerAura
             size="md"
             color="#C04CFA"
@@ -385,7 +385,7 @@ export default function AgentSidePanel({ livekit }) {
         {/* Input Message Form */}
         <form
           onSubmit={handleSendMessage}
-          className="border-t border-[#222222] bg-[#050505] p-2.5 sm:p-3 flex items-center gap-2 shrink-0"
+          className="border-t border-[#222222] bg-[#050505] p-2.5 sm:p-3 pb-20 sm:pb-3 flex items-center gap-2 shrink-0"
         >
           <input
             type="text"
