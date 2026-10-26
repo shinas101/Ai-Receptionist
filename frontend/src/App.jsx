@@ -101,7 +101,7 @@ export default function App() {
       />
 
       {/* Main Single-Window Workspace: Mobile full view per tab, Desktop side-by-side */}
-      <main className="flex-1 min-h-0 p-2 sm:p-3 lg:p-4.5 pb-24 sm:pb-28 flex flex-col lg:flex-row gap-3 lg:gap-4 overflow-hidden relative">
+      <main className="flex-1 min-h-0 p-2 sm:p-3 lg:p-4.5 pb-28 sm:pb-34 flex flex-col lg:flex-row gap-3 lg:gap-4 overflow-hidden relative">
         {/* Left Panel: Live Calendar & Specialists (Full view on mobile when active, side-by-side on lg) */}
         <section
           className={`flex-1 min-h-0 flex flex-col h-full rounded-xl sm:rounded-2xl border border-[#222228] bg-[#000000] overflow-hidden shadow-2xl ${
@@ -130,35 +130,34 @@ export default function App() {
         </aside>
       </main>
 
-      {/* Prominent Floating Dock Navbar (Built directly on website design system) */}
+      {/* Hallmark Precision Floating Dock (Architectural, spacious, thumb-first on mobile, grand on desktop) */}
       <nav
         aria-label="Application dock navigation"
-        className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#0a0a0e]/95 backdrop-blur-xl border border-[#262630] shadow-[0_20px_50px_rgba(0,0,0,0.95)] rounded-xl sm:rounded-2xl p-2 sm:p-2.5 flex items-center gap-1.5 sm:gap-2.5 max-w-[calc(100vw-1.5rem)] select-none"
+        className="fixed bottom-4 sm:bottom-7 left-1/2 -translate-x-1/2 z-40 bg-[#0d0d12]/95 backdrop-blur-2xl border border-[#282838] shadow-[0_24px_60px_-10px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.09)] rounded-2xl p-2 sm:p-2.5 flex items-center justify-center gap-1.5 sm:gap-3 max-w-[96vw] select-none"
       >
         {/* Dock Item 1: Mia AI Voice Receptionist */}
         <button
           onClick={() => setMobileTab('agent')}
-          className={`px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3 sm:px-6 py-2 sm:py-3.5 rounded-xl text-xs sm:text-base font-semibold tracking-wide transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 cursor-pointer min-w-[68px] sm:min-w-0 active:scale-[0.97] ${
             mobileTab === 'agent'
-              ? 'bg-[#181824] text-white border border-[#3b3b50] shadow-sm'
-              : 'text-zinc-400 hover:text-white hover:bg-[#121218] border border-transparent'
+              ? 'bg-[#1e1e2c] text-white border border-[#404058] shadow-md'
+              : 'text-zinc-400 hover:text-white hover:bg-[#14141e] border border-transparent'
           }`}
           title="Mia AI Voice Receptionist"
         >
-          <Mic className={`w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 ${isConnected ? 'text-emerald-400' : 'text-purple-400'}`} />
+          <div className="relative flex items-center justify-center">
+            <Mic className={`w-5 h-5 shrink-0 ${isConnected ? 'text-emerald-400' : 'text-purple-400'}`} />
+            {isConnected && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#0d0d12] animate-pulse" />
+            )}
+          </div>
           <span>Mia AI</span>
-          {isConnected && (
-            <div className="flex items-center gap-1 ml-0.5">
-              {livekit.isAgentSpeaking ? (
-                <span className="flex items-end gap-0.5 h-3">
-                  <span className="w-0.5 h-2 bg-emerald-400 animate-pulse" />
-                  <span className="w-0.5 h-3.5 bg-emerald-400 animate-pulse delay-75" />
-                  <span className="w-0.5 h-2 bg-emerald-400 animate-pulse delay-150" />
-                </span>
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </div>
+          {isConnected && livekit.isAgentSpeaking && (
+            <span className="hidden sm:flex items-end gap-0.5 h-3.5 ml-0.5">
+              <span className="w-0.5 h-2 bg-emerald-400 animate-pulse" />
+              <span className="w-0.5 h-3.5 bg-emerald-400 animate-pulse delay-75" />
+              <span className="w-0.5 h-2 bg-emerald-400 animate-pulse delay-150" />
+            </span>
           )}
         </button>
 
@@ -168,17 +167,24 @@ export default function App() {
             setMobileTab('calendar');
             setCalendarTab('calendar');
           }}
-          className={`px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3 sm:px-6 py-2 sm:py-3.5 rounded-xl text-xs sm:text-base font-semibold tracking-wide transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 cursor-pointer min-w-[68px] sm:min-w-0 active:scale-[0.97] ${
             mobileTab === 'calendar' && calendarTab === 'calendar'
-              ? 'bg-[#181824] text-white border border-[#3b3b50] shadow-sm'
-              : 'text-zinc-400 hover:text-white hover:bg-[#121218] border border-transparent'
+              ? 'bg-[#1e1e2c] text-white border border-[#404058] shadow-md'
+              : 'text-zinc-400 hover:text-white hover:bg-[#14141e] border border-transparent'
           }`}
           title="Clinical Calendar"
         >
-          <Calendar className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-purple-400 shrink-0" />
+          <div className="relative flex items-center justify-center">
+            <Calendar className="w-5 h-5 text-purple-400 shrink-0" />
+            {appointments.length > 0 && (
+              <span className="sm:hidden absolute -top-1.5 -right-2 text-[9px] px-1 py-0.2 rounded-full font-mono font-bold bg-purple-600 text-white leading-none">
+                {appointments.length}
+              </span>
+            )}
+          </div>
           <span>Calendar</span>
           {appointments.length > 0 && (
-            <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-[#1c1c28] border border-[#2c2c3e] text-zinc-300">
+            <span className="hidden sm:inline-block text-xs px-2.5 py-0.5 rounded-md font-mono font-medium bg-[#1c1c28] border border-[#303042] text-zinc-300">
               {appointments.length}
             </span>
           )}
@@ -190,53 +196,58 @@ export default function App() {
             setMobileTab('calendar');
             setCalendarTab('doctors');
           }}
-          className={`px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3 sm:px-6 py-2 sm:py-3.5 rounded-xl text-xs sm:text-base font-semibold tracking-wide transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 cursor-pointer min-w-[68px] sm:min-w-0 active:scale-[0.97] ${
             mobileTab === 'calendar' && calendarTab === 'doctors'
-              ? 'bg-[#181824] text-white border border-[#3b3b50] shadow-sm'
-              : 'text-zinc-400 hover:text-white hover:bg-[#121218] border border-transparent'
+              ? 'bg-[#1e1e2c] text-white border border-[#404058] shadow-md'
+              : 'text-zinc-400 hover:text-white hover:bg-[#14141e] border border-transparent'
           }`}
           title="Physicians & Specialists Directory"
         >
-          <Stethoscope className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-purple-400 shrink-0" />
-          <span className="hidden xs:inline">Specialists</span>
-          <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-[#1c1c28] border border-[#2c2c3e] text-zinc-300">
+          <div className="relative flex items-center justify-center">
+            <Stethoscope className="w-5 h-5 text-purple-400 shrink-0" />
+            <span className="sm:hidden absolute -top-1.5 -right-2 text-[9px] px-1 py-0.2 rounded-full font-mono font-bold bg-[#2a2a3c] text-zinc-300 leading-none">
+              {doctors.length}
+            </span>
+          </div>
+          <span>Specialists</span>
+          <span className="hidden sm:inline-block text-xs px-2.5 py-0.5 rounded-md font-mono font-medium bg-[#1c1c28] border border-[#303042] text-zinc-300">
             {doctors.length}
           </span>
         </button>
 
-        {/* Technical Border Divider */}
-        <div className="w-px h-6 sm:h-7 bg-[#272732] mx-1 sm:mx-1.5" />
+        {/* Architectural Vertical Separator */}
+        <div className="w-px h-8 sm:h-9 bg-[#282838] mx-0.5 sm:mx-1.5" />
 
         {/* Dock Action Controls */}
         {!isConnected ? (
           <button
             onClick={handleToggleCall}
-            className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-white hover:bg-zinc-200 text-black font-semibold text-xs sm:text-sm tracking-wide transition-all flex items-center gap-2 shadow-md cursor-pointer shrink-0"
+            className="px-3.5 sm:px-7 py-2 sm:py-3.5 rounded-xl bg-white hover:bg-zinc-100 text-black font-bold text-xs sm:text-base tracking-wide transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 shadow-lg active:scale-95 cursor-pointer shrink-0"
             title="Start Voice Consultation with Mia"
           >
-            <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+            <Sparkles className="w-5 h-5 text-purple-600 shrink-0" />
             <span>Call Mia</span>
           </button>
         ) : (
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={livekit.toggleMute}
-              className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border text-xs sm:text-sm transition-colors cursor-pointer ${
+              className={`p-2.5 sm:p-3.5 rounded-xl border text-xs sm:text-base transition-colors cursor-pointer active:scale-95 ${
                 livekit.isMuted
                   ? 'bg-rose-950/80 border-rose-600 text-rose-300'
-                  : 'bg-[#14141c] hover:bg-[#1c1c28] border-[#2a2a38] text-zinc-200'
+                  : 'bg-[#14141e] hover:bg-[#1e1e2c] border-[#2e2e40] text-zinc-200'
               }`}
               title={livekit.isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
             >
-              {livekit.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-emerald-400" />}
+              {livekit.isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 text-emerald-400" />}
             </button>
             <button
               onClick={livekit.disconnect}
-              className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-sm cursor-pointer"
+              className="px-3 sm:px-5 py-2.5 sm:py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-base flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
               title="End Voice Consultation"
             >
-              <PhoneOff className="w-4 h-4" />
-              <span className="hidden sm:inline">End</span>
+              <PhoneOff className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>End</span>
             </button>
           </div>
         )}
