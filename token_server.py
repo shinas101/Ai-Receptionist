@@ -318,9 +318,6 @@ def create_app():
     app.router.add_get("/api/config", get_config_handler)
     app.router.add_options("/api/config", options_handler)
 
-    app.router.add_get("/api/config", get_config_handler)
-    app.router.add_options("/api/config", options_handler)
-
     app.router.add_get("/api/token", get_token)
     app.router.add_options("/api/token", options_handler)
     app.router.add_get("/token", get_token)
