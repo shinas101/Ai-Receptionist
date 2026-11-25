@@ -7,10 +7,9 @@ from dotenv import load_dotenv
 from livekit.api import (
     AccessToken,
     VideoGrants,
-    LiveKitAPI,
-    CreateAgentDispatchRequest,
-    ListParticipantsRequest,
 )
+from livekit.protocol.room import RoomConfiguration
+from livekit.protocol.agent_dispatch import RoomAgentDispatch
 
 from app.settings import get_all_settings, set_setting, verify_admin_pin
 from app.memory.service import (
@@ -71,6 +70,13 @@ async def options_handler(request: web.Request):
     return web.Response(headers=cors_headers(request))
 
 
+async def get_config_handler(request: web.Request):
+    return json_response({
+        "success": True,
+        "livekit_url": LIVEKIT_URL,
+    }, request=request)
+
+
 async def get_token(request: web.Request):
     room = request.query.get("room", "receptionist-room")
     name = request.query.get("name", "Patient")
@@ -88,42 +94,15 @@ async def get_token(request: web.Request):
             can_publish_data=True,
         )
     )
+    # Embed agent dispatch directly in the JWT so LiveKit dispatches Mia on room join
+    # with zero blocking REST round-trips during /api/token.
+    token.with_room_config(
+        RoomConfiguration(
+            agents=[RoomAgentDispatch(agent_name="my-agent")]
+        )
+    )
 
     jwt = token.to_jwt()
-
-    # Automatically dispatch agent to the room ONLY if no agent is already present or dispatched
-    try:
-        lk = LiveKitAPI(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
-        should_dispatch = True
-        try:
-            parts = await lk.room.list_participants(ListParticipantsRequest(room=room))
-            for p in parts.participants:
-                p_id = (p.identity or "").lower()
-                p_name = (p.name or "").lower()
-                if "agent" in p_id or "mia" in p_name or p.kind == 2:
-                    should_dispatch = False
-                    break
-        except Exception:
-            pass
-
-        if should_dispatch:
-            try:
-                dispatches = await lk.agent_dispatch.list_dispatch(room)
-                if len(dispatches) > 0:
-                    should_dispatch = False
-            except Exception:
-                pass
-
-        if should_dispatch:
-            await lk.agent_dispatch.create_dispatch(
-                CreateAgentDispatchRequest(
-                    agent_name="my-agent",
-                    room=room,
-                )
-            )
-        await lk.aclose()
-    except Exception as e:
-        print("Dispatch note:", e)
 
     return json_response({
         "success": True,
@@ -132,7 +111,7 @@ async def get_token(request: web.Request):
         "room": room,
         "identity": identity,
         "name": name,
-    }, headers=cors_headers())
+    }, request=request)
 
 
 async def get_settings_handler(request: web.Request):
@@ -335,6 +314,12 @@ def create_app():
     # Root web page & SPA dashboard
     app.router.add_get("/", index_handler)
     app.router.add_get("/dashboard", index_handler)
+
+    app.router.add_get("/api/config", get_config_handler)
+    app.router.add_options("/api/config", options_handler)
+
+    app.router.add_get("/api/config", get_config_handler)
+    app.router.add_options("/api/config", options_handler)
 
     app.router.add_get("/api/token", get_token)
     app.router.add_options("/api/token", options_handler)

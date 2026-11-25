@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Room, RoomEvent, Track } from 'livekit-client';
+import { Room, RoomEvent, Track, createLocalAudioTrack } from 'livekit-client';
 import { api } from '../services/api';
+
+const ROOM_OPTIONS = {
+  adaptiveStream: true,
+  dynacast: true,
+  stopLocalTrackOnUnpublish: false,
+  audioCaptureDefaults: {
+    autoGainControl: true,
+    echoCancellation: true,
+    noiseSuppression: true,
+  },
+};
 
 export function useLiveKit() {
   const [connectionState, setConnectionState] = useState('disconnected'); // disconnected, connecting, connected, error
@@ -24,6 +35,8 @@ export function useLiveKit() {
   const [activeToolCall, setActiveToolCall] = useState(null); // { tool: string, message: string, status: 'running'|'completed', timestamp: number }
 
   const roomRef = useRef(null);
+  const preparedRoomRef = useRef(null);
+  const livekitUrlRef = useRef(null);
   const connectionStateRef = useRef(connectionState);
   useEffect(() => {
     connectionStateRef.current = connectionState;
@@ -31,10 +44,32 @@ export function useLiveKit() {
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
+  const micAnimFrameRef = useRef(null);
   const audioElementRef = useRef(null);
   const localMicStreamRef = useRef(null);
 
-  // Helper to normalize strings for robust deduplication (removes punctuation, casing, extra whitespace)
+  // Pre-warm DNS, TLS, and WebRTC ICE signaling on mount so clicking Call Mia is instant
+  useEffect(() => {
+    let active = true;
+    const prewarmConnection = async () => {
+      try {
+        const cfg = await api.getConfig();
+        if (!active || !cfg?.livekit_url) return;
+        livekitUrlRef.current = cfg.livekit_url;
+        const warmRoom = new Room(ROOM_OPTIONS);
+        preparedRoomRef.current = warmRoom;
+        await warmRoom.prepareConnection(cfg.livekit_url);
+      } catch {
+        // Non-fatal: connect() still creates a fresh Room if backend isn't reachable yet
+      }
+    };
+    void prewarmConnection();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Helper to normalize strings for robust deduplication
   const normalizeText = (str) =>
     (str || '')
       .toLowerCase()
@@ -56,7 +91,7 @@ export function useLiveKit() {
     if (!normClean) return;
 
     setTranscripts((prev) => {
-      // 1. If explicit ID matches an existing card, update it in place (live streaming!)
+      // 1. If explicit ID matches an existing card, update it in place (live streaming)
       if (id) {
         const existingIdx = prev.findIndex((m) => m.id === id);
         if (existingIdx !== -1) {
@@ -90,7 +125,6 @@ export function useLiveKit() {
       if (last && last.speaker === speaker) {
         const normLast = normalizeText(last.text);
 
-        // 3a. Exact duplicate match from multiple broadcast channels
         if (normLast === normClean) {
           if (isFinal && !last.final) {
             const updated = [...prev];
@@ -100,10 +134,9 @@ export function useLiveKit() {
             };
             return updated;
           }
-          return prev; // Ignore exact duplicate
+          return prev;
         }
 
-        // 3b. In-place streaming continuation (partial speech chunks or progressive response)
         if (
           !last.final ||
           normClean.startsWith(normLast) ||
@@ -121,7 +154,7 @@ export function useLiveKit() {
         }
       }
 
-      // 4. Check recent messages for duplicate broadcast echoes (within last 4 items)
+      // 4. Check recent messages for duplicate broadcast echoes
       const isRecentDuplicate = prev.slice(-4).some(
         (m) => m.speaker === speaker && normalizeText(m.text) === normClean
       );
@@ -144,20 +177,23 @@ export function useLiveKit() {
     });
   }, []);
 
-  // Web Audio analyzer for remote agent audio
+  // Throttled Web Audio analyzer for remote agent audio (~15fps to avoid React 60fps render storms)
   const setupAudioAnalysis = useCallback((mediaStream) => {
     try {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
       const ctx = audioContextRef.current;
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        void ctx.resume();
       }
 
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 64;
-      analyser.smoothingTimeConstant = 0.8;
+      analyser.smoothingTimeConstant = 0.75;
       analyserRef.current = analyser;
 
       const source = ctx.createMediaStreamSource(mediaStream);
@@ -165,35 +201,88 @@ export function useLiveKit() {
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
+      let lastTick = 0;
+      let lastLevel = -1;
+      let lastSpeaking = null;
 
-      const updateMeter = () => {
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i];
-        }
-        const avg = sum / bufferLength;
-        const normalized = Math.min(100, Math.round((avg / 255) * 100));
+      const updateMeter = (now) => {
+        if (now - lastTick >= 65) {
+          lastTick = now;
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / bufferLength;
+          const normalized = Math.min(100, Math.round((avg / 255) * 100));
+          const speaking = normalized > 6;
 
-        setAgentAudioLevel(normalized);
-        const speaking = normalized > 6;
-        setIsAgentSpeaking(speaking);
-        if (speaking) {
-          setAgentState('speaking');
-        } else if (connectionStateRef.current === 'connected' || roomRef.current?.state === 'connected') {
-          setAgentState('listening');
+          if (Math.abs(normalized - lastLevel) >= 3 || (normalized === 0 && lastLevel !== 0)) {
+            lastLevel = normalized;
+            setAgentAudioLevel(normalized);
+          }
+
+          if (speaking !== lastSpeaking) {
+            lastSpeaking = speaking;
+            setIsAgentSpeaking(speaking);
+            if (speaking) {
+              setAgentState('speaking');
+            } else if (connectionStateRef.current === 'connected' || roomRef.current?.state === 'connected') {
+              setAgentState('listening');
+            }
+          }
         }
 
         animFrameRef.current = requestAnimationFrame(updateMeter);
       };
 
-      updateMeter();
+      animFrameRef.current = requestAnimationFrame(updateMeter);
     } catch (e) {
       console.warn('Audio analyzer note:', e);
     }
   }, []);
 
-  // Connect to LiveKit Room & Dispatch Agent
+  const startLocalMicMonitor = useCallback((micMediaTrack) => {
+    if (!micMediaTrack) return;
+    try {
+      if (micAnimFrameRef.current) {
+        cancelAnimationFrame(micAnimFrameRef.current);
+      }
+      const stream = new MediaStream([micMediaTrack]);
+      localMicStreamRef.current = stream;
+      const micCtx = audioContextRef.current || new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = micCtx;
+      const micAnalyser = micCtx.createAnalyser();
+      micAnalyser.fftSize = 32;
+      const micSource = micCtx.createMediaStreamSource(stream);
+      micSource.connect(micAnalyser);
+      const data = new Uint8Array(micAnalyser.frequencyBinCount);
+
+      let lastTick = 0;
+      let lastMicLevel = -1;
+
+      const pollMic = (now) => {
+        if (!roomRef.current || roomRef.current.state !== 'connected') return;
+        if (now - lastTick >= 80) {
+          lastTick = now;
+          micAnalyser.getByteFrequencyData(data);
+          let s = 0;
+          for (let i = 0; i < data.length; i++) s += data[i];
+          const next = Math.round(((s / data.length) / 255) * 100);
+          if (Math.abs(next - lastMicLevel) >= 4 || (next === 0 && lastMicLevel !== 0)) {
+            lastMicLevel = next;
+            setUserAudioLevel(next);
+          }
+        }
+        micAnimFrameRef.current = requestAnimationFrame(pollMic);
+      };
+      micAnimFrameRef.current = requestAnimationFrame(pollMic);
+    } catch (err) {
+      console.warn('Local mic analysis note:', err);
+    }
+  }, []);
+
+  // Connect to LiveKit Room with parallel token + mic capture and pre-warmed signaling
   const connect = useCallback(async (userName = 'Patient') => {
     if (connectionState === 'connecting' || connectionState === 'connected') return;
 
@@ -201,34 +290,43 @@ export function useLiveKit() {
     setAgentState('connecting');
     setError(null);
     setStartupStatus({
-      status: 'token',
-      message: 'Authorizing consultation credentials...',
+      status: 'connecting',
+      message: 'Connecting voice consultation...',
     });
 
-    // Resume or unlock Web Audio on direct user click
+    // Unlock Web Audio immediately on user gesture
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
       if (audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
+        void audioContextRef.current.resume();
       }
     } catch (e) {
       console.warn('AudioContext unlock note:', e);
     }
 
+    let preCapturedTrack = null;
+
     try {
       const uniqueRoom = `consultation-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`;
-      const tokenRes = await api.getToken(uniqueRoom, userName);
 
-      if (!tokenRes || !tokenRes.token) {
-        throw new Error(tokenRes?.error || 'Failed to obtain LiveKit token');
+      // Run token fetch and local mic capture in parallel to cut connect time
+      const [tokenOutcome, micOutcome] = await Promise.allSettled([
+        api.getToken(uniqueRoom, userName),
+        createLocalAudioTrack(ROOM_OPTIONS.audioCaptureDefaults),
+      ]);
+
+      if (micOutcome.status === 'fulfilled') {
+        preCapturedTrack = micOutcome.value;
       }
 
-      setStartupStatus({
-        status: 'connecting',
-        message: 'Establishing WebRTC clinical audio connection...',
-      });
+      if (tokenOutcome.status !== 'fulfilled' || !tokenOutcome.value?.token) {
+        throw new Error(tokenOutcome.reason?.message || tokenOutcome.value?.error || 'Failed to obtain LiveKit token');
+      }
+
+      const tokenRes = tokenOutcome.value;
+      livekitUrlRef.current = tokenRes.url;
 
       setRoomInfo({
         room: tokenRes.room,
@@ -236,20 +334,11 @@ export function useLiveKit() {
         url: tokenRes.url,
       });
 
-      // Initialize LiveKit Room instance with persistent audio options
-      const room = new Room({
-        adaptiveStream: true,
-        dynacast: true,
-        stopLocalTrackOnUnpublish: false,
-        audioCaptureDefaults: {
-          autoGainControl: true,
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      });
+      // Reuse pre-warmed Room when available so TLS/ICE is already established
+      const room = preparedRoomRef.current || new Room(ROOM_OPTIONS);
+      preparedRoomRef.current = null;
       roomRef.current = room;
 
-      // Handle remote audio tracks (Mia / AI Agent)
       const attachAudioTrack = (track) => {
         if (track.kind === Track.Kind.Audio) {
           const el = track.attach();
@@ -260,23 +349,15 @@ export function useLiveKit() {
           document.body.appendChild(el);
           audioElementRef.current = el;
 
-          // Explicitly play to prevent autoplay blocks
           el.play().catch((playErr) => {
             console.warn('Remote audio playback note:', playErr);
           });
 
-          // Connect to analyser
           if (track.mediaStream) {
             setupAudioAnalysis(track.mediaStream);
           }
 
-          setStartupStatus({
-            status: 'agent_connected',
-            message: 'Mia connected. Preparing initial greeting...',
-          });
-          setTimeout(() => {
-            setStartupStatus((prev) => (prev?.status === 'agent_connected' ? null : prev));
-          }, 2000);
+          setStartupStatus(null);
         }
       };
 
@@ -288,7 +369,6 @@ export function useLiveKit() {
         track.detach();
       });
 
-      // 1. LiveKit Native Transcription Segments (emitted by STT and agent audio)
       room.on(RoomEvent.TranscriptionReceived, (segments, participant) => {
         if (!segments || !Array.isArray(segments)) return;
         for (const seg of segments) {
@@ -304,7 +384,6 @@ export function useLiveKit() {
         }
       });
 
-      // 2. Modern LiveKit TextStream transcription (lk.transcription topic)
       try {
         room.registerTextStreamHandler('lk.transcription', async (reader, { identity }) => {
           const isAgent =
@@ -331,7 +410,6 @@ export function useLiveKit() {
         console.warn('TextStreamHandler registration note:', err);
       }
 
-      // 3. Native LiveKit Chat Messages
       room.on(RoomEvent.ChatMessage, (msg, participant) => {
         if (msg && msg.message) {
           const isAgent =
@@ -344,15 +422,12 @@ export function useLiveKit() {
         }
       });
 
-      // 4. Reliable Data Channel Packets (from agent.py & tools broadcast)
       room.on(RoomEvent.DataReceived, (payload, participant) => {
-        if (participant?.isLocal) return; // Prevent local loopback echo
+        if (participant?.isLocal) return;
         try {
-          const decoder = new TextDecoder();
-          const str = decoder.decode(payload);
+          const str = new TextDecoder().decode(payload);
           const data = JSON.parse(str);
 
-          // Tool call execution tracking
           if (data && data.type === 'tool_call') {
             if (data.status === 'running') {
               setActiveToolCall({
@@ -371,26 +446,23 @@ export function useLiveKit() {
               }));
               setTimeout(() => {
                 setActiveToolCall((prev) => (prev?.status === 'completed' ? null : prev));
-              }, 2500);
+              }, 2000);
             }
             return;
           }
 
-          // Agent startup status tracking
           if (data && data.type === 'agent_status') {
-            setStartupStatus({
-              status: data.status,
-              message: data.message,
-            });
             if (data.status === 'ready') {
-              setTimeout(() => {
-                setStartupStatus(null);
-              }, 1800);
+              setStartupStatus(null);
+            } else {
+              setStartupStatus({
+                status: data.status,
+                message: data.message,
+              });
             }
             return;
           }
 
-          // Agent state tracking
           if (data && data.type === 'agent_state') {
             if (data.state) {
               setAgentState(data.state);
@@ -401,7 +473,6 @@ export function useLiveKit() {
             return;
           }
 
-          // Transcripts
           if (data && (data.text || data.transcript)) {
             const text = (data.text || data.transcript).trim();
             const rawSpeaker = data.speaker || participant?.identity || 'MIA';
@@ -428,66 +499,52 @@ export function useLiveKit() {
         setActiveToolCall(null);
       });
 
-      // Connect to LiveKit WebRTC
-      await room.connect(tokenRes.url, tokenRes.token);
+      await room.connect(tokenRes.url, tokenRes.token, { autoSubscribe: true });
 
+      // Mark connected immediately once WebRTC joins instead of blocking on mic publish
+      setConnectionState('connected');
+      setAgentState('listening');
       setStartupStatus({
         status: 'waiting_agent',
-        message: 'Connected to clinic room. Waiting for Mia to join...',
+        message: 'Connected. Mia is joining...',
       });
 
-      // Check existing participants/tracks
       room.remoteParticipants.forEach((p) => {
         p.trackPublications.forEach((pub) => {
           if (pub.track) attachAudioTrack(pub.track);
         });
       });
 
-      // Enable microphone
-      try {
-        await room.localParticipant.enableCameraAndMicrophone(false, true);
-      } catch (micErr) {
-        console.warn('Microphone permission note:', micErr);
+      // Publish pre-captured mic track without blocking UI transition
+      if (preCapturedTrack) {
+        room.localParticipant
+          .publishTrack(preCapturedTrack, { source: Track.Source.Microphone })
+          .then(() => {
+            startLocalMicMonitor(preCapturedTrack.mediaStreamTrack);
+          })
+          .catch((pubErr) => {
+            console.warn('Pre-captured mic publish note:', pubErr);
+          });
+      } else {
+        room.localParticipant
+          .enableCameraAndMicrophone(false, true)
+          .then(() => {
+            const localTrackPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+            startLocalMicMonitor(localTrackPub?.track?.mediaStreamTrack);
+          })
+          .catch((micErr) => {
+            console.warn('Microphone permission note:', micErr);
+          });
       }
-
-      setConnectionState('connected');
-      setAgentState('listening');
-
-      // 5. Persistent Local Mic Level Monitoring (uses existing LiveKit mic track, NO duplicate getUserMedia)
-      try {
-        const localTrackPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
-        const micMediaTrack = localTrackPub?.track?.mediaStreamTrack;
-        if (micMediaTrack) {
-          const stream = new MediaStream([micMediaTrack]);
-          localMicStreamRef.current = stream;
-          const micCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const micAnalyser = micCtx.createAnalyser();
-          micAnalyser.fftSize = 32;
-          const micSource = micCtx.createMediaStreamSource(stream);
-          micSource.connect(micAnalyser);
-          const data = new Uint8Array(micAnalyser.frequencyBinCount);
-
-          const pollMic = () => {
-            if (roomRef.current && roomRef.current.state === 'connected') {
-              micAnalyser.getByteFrequencyData(data);
-              let s = 0;
-              for (let i = 0; i < data.length; i++) s += data[i];
-              const avg = (s / data.length) / 255;
-              setUserAudioLevel(Math.round(avg * 100));
-              requestAnimationFrame(pollMic);
-            }
-          };
-          pollMic();
-        }
-      } catch (err) {
-        console.warn('Local mic analysis note:', err);
-      }
-
     } catch (err) {
+      if (preCapturedTrack) {
+        preCapturedTrack.stop();
+      }
       console.warn('LiveKit live connection error (falling back to interactive mode):', err.message);
       setError(err.message);
+      setStartupStatus(null);
 
-      // Fallback: Enable interactive demo mode so user can test the UI immediately!
+      // Instant interactive demo mode fallback when backend/LiveKit is unavailable
       setConnectionState('connected');
       setAgentState('listening');
       setRoomInfo({
@@ -497,12 +554,17 @@ export function useLiveKit() {
       });
       appendTranscript('MIA', 'Hello! Thank you for calling ABC Health Care. My name is Mia. How can I assist you with your appointment today?', 'agent');
     }
-  }, [connectionState, appendTranscript, setupAudioAnalysis]);
+  }, [connectionState, appendTranscript, setupAudioAnalysis, startLocalMicMonitor]);
 
-  // Disconnect cleanly
+  // Disconnect cleanly and pre-warm next Room if livekitUrl is known
   const disconnect = useCallback(() => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (micAnimFrameRef.current) {
+      cancelAnimationFrame(micAnimFrameRef.current);
+      micAnimFrameRef.current = null;
     }
     if (audioElementRef.current) {
       audioElementRef.current.remove();
@@ -522,9 +584,15 @@ export function useLiveKit() {
     setUserAudioLevel(0);
     setStartupStatus(null);
     setActiveToolCall(null);
+
+    if (livekitUrlRef.current) {
+      const nextWarm = new Room(ROOM_OPTIONS);
+      preparedRoomRef.current = nextWarm;
+      void nextWarm.prepareConnection(livekitUrlRef.current).catch(() => {});
+    }
   }, []);
 
-  // Persistent Mute / Unmute: Keeps the WebRTC audio connection active without hardware restarts or browser beeps
+  // Persistent Mute / Unmute
   const toggleMute = useCallback(async () => {
     const nextMute = !isMuted;
     setIsMuted(nextMute);
@@ -552,7 +620,6 @@ export function useLiveKit() {
     appendTranscript('Patient', text, 'user', true);
     setAgentState('thinking');
 
-    // If connected to room with data channel, publish
     if (roomRef.current && roomRef.current.state === 'connected') {
       try {
         const payload = new TextEncoder().encode(JSON.stringify({ text, speaker: 'Patient', type: 'transcript', final: true }));
@@ -562,7 +629,6 @@ export function useLiveKit() {
       }
     }
 
-    // Offline fallback response ONLY if NOT connected to live LiveKit agent room
     if (!roomRef.current || roomRef.current.state !== 'connected') {
       setTimeout(() => {
         setIsAgentSpeaking(true);
@@ -584,7 +650,6 @@ export function useLiveKit() {
 
         appendTranscript('MIA', reply, 'agent', true);
 
-        // Speech synthesis fallback so the user actually HEARS audio in offline demo
         if ('speechSynthesis' in window && !audioElementRef.current?.srcObject) {
           try {
             const utter = new SpeechSynthesisUtterance(reply);
@@ -610,13 +675,14 @@ export function useLiveKit() {
             setAgentAudioLevel(0);
           }, 3500);
         }
-      }, 800);
+      }, 220);
     }
   }, [appendTranscript]);
 
   useEffect(() => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (micAnimFrameRef.current) cancelAnimationFrame(micAnimFrameRef.current);
       if (roomRef.current) roomRef.current.disconnect();
     };
   }, []);

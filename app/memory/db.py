@@ -341,6 +341,26 @@ class SQLiteAdapter:
 _pg_pool = None
 _sqlite_adapter: Optional[SQLiteAdapter] = None
 _active_backend = "sqlite"  # 'pg' or 'sqlite'
+_db_initialized = False
+_pg_schema_ready = False
+_init_lock: Optional[asyncio.Lock] = None
+
+
+def _get_init_lock() -> asyncio.Lock:
+    global _init_lock
+    if _init_lock is None:
+        _init_lock = asyncio.Lock()
+    return _init_lock
+_db_initialized = False
+_pg_schema_ready = False
+_init_lock: Optional[asyncio.Lock] = None
+
+
+def _get_init_lock() -> asyncio.Lock:
+    global _init_lock
+    if _init_lock is None:
+        _init_lock = asyncio.Lock()
+    return _init_lock
 
 
 async def _ensure_postgres_schema(pool):
@@ -418,43 +438,55 @@ async def _ensure_postgres_schema(pool):
 
 
 async def init_db():
-    """Initialize database connection, prioritizing PostgreSQL with transparent SQLite fallback."""
-    global _pg_pool, _sqlite_adapter, _active_backend
+    """Initialize database connection once per process, prioritizing PostgreSQL with fast SQLite fallback."""
+    global _pg_pool, _sqlite_adapter, _active_backend, _db_initialized, _pg_schema_ready
 
-    # Always initialize SQLite adapter ready for local storage
-    if _sqlite_adapter is None:
-        _sqlite_adapter = SQLiteAdapter(SQLITE_DB_PATH)
+    if _db_initialized:
+        return _pg_pool if _active_backend == "pg" and _pg_pool is not None else _sqlite_adapter
 
-    # Attempt PostgreSQL connection
-    try:
-        import asyncpg
-        target_db_url = os.getenv("DATABASE_URL", DATABASE_URL)
-        if target_db_url.startswith("postgres://"):
-            target_db_url = target_db_url.replace("postgres://", "postgresql://", 1)
-        pool = await asyncpg.create_pool(
-            target_db_url,
-            min_size=1,
-            max_size=5,
-            command_timeout=3.0,
-        )
-        # Test connection & ensure schema
-        await _ensure_postgres_schema(pool)
-        _pg_pool = pool
-        _active_backend = "pg"
-        logger.info("Connected to PostgreSQL database for ABC Health Care.")
-        return _pg_pool
-    except Exception as e:
-        logger.warning(
-            f"PostgreSQL connection failed ({e}). Seamlessly using local high-performance SQLite database: {SQLITE_DB_PATH}"
-        )
-        _pg_pool = None
-        _active_backend = "sqlite"
-        return _sqlite_adapter
+    async with _get_init_lock():
+        if _db_initialized:
+            return _pg_pool if _active_backend == "pg" and _pg_pool is not None else _sqlite_adapter
+
+        # Always initialize SQLite adapter ready for local storage
+        if _sqlite_adapter is None:
+            _sqlite_adapter = SQLiteAdapter(SQLITE_DB_PATH)
+
+        # Attempt PostgreSQL connection with short connect timeout for instant fallback
+        try:
+            import asyncpg
+            target_db_url = os.getenv("DATABASE_URL", DATABASE_URL)
+            if target_db_url.startswith("postgres://"):
+                target_db_url = target_db_url.replace("postgres://", "postgresql://", 1)
+            pool = await asyncpg.create_pool(
+                target_db_url,
+                min_size=1,
+                max_size=5,
+                timeout=1.0,
+                command_timeout=3.0,
+            )
+            if not _pg_schema_ready:
+                await _ensure_postgres_schema(pool)
+                _pg_schema_ready = True
+            _pg_pool = pool
+            _active_backend = "pg"
+            _db_initialized = True
+            logger.info("Connected to PostgreSQL database for ABC Health Care.")
+            return _pg_pool
+        except Exception as e:
+            logger.warning(
+                f"PostgreSQL connection failed ({e}). Using local SQLite database: {SQLITE_DB_PATH}"
+            )
+            _pg_pool = None
+            _active_backend = "sqlite"
+            _db_initialized = True
+            return _sqlite_adapter
 
 
 async def close_db(reason: str = ""):
     """Close active database connections cleanly."""
-    global _pg_pool
+    global _pg_pool, _db_initialized
+    _db_initialized = False
     if _pg_pool is not None:
         try:
             await _pg_pool.close()
@@ -466,7 +498,8 @@ async def close_db(reason: str = ""):
 
 async def get_pool():
     """Get active database interface (PostgreSQL pool or SQLite adapter)."""
-    global _pg_pool, _sqlite_adapter, _active_backend
+    if not _db_initialized:
+        await init_db()
     if _active_backend == "pg" and _pg_pool is not None:
         return _pg_pool
     if _sqlite_adapter is None:

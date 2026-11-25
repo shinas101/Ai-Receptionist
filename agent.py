@@ -25,12 +25,16 @@ from app.memory.tools import MemoryTools
 logger = logging.getLogger("ai-receptionist")
 load_dotenv(".env")
 
-NUM_IDLE_PROCESSES = int(os.getenv("NUM_IDLE_PROCESSES", "1"))
+NUM_IDLE_PROCESSES = int(os.getenv("NUM_IDLE_PROCESSES", "2"))
 server = AgentServer(num_idle_processes=NUM_IDLE_PROCESSES)
 
 
 def prewarm(proc: agents.JobProcess):
-    proc.userdata["vad"] = silero.VAD.load()
+    proc.userdata["vad"] = silero.VAD.load(
+        min_speech_duration=0.04,
+        min_silence_duration=0.25,
+        prefix_padding_duration=0.2,
+    )
 
 
 server.setup_fnc = prewarm
@@ -140,8 +144,8 @@ class Assistant(Agent):
 @server.rtc_session(agent_name="my-agent")
 async def my_agent(ctx: agents.JobContext):
 
-    # Initialize PostgreSQL connection pool
-    await init_db()
+    # Warm database pool concurrently while LiveKit room & audio session start
+    db_task = asyncio.create_task(init_db())
     ctx.add_shutdown_callback(close_db)
 
     session = AgentSession(
@@ -160,9 +164,24 @@ async def my_agent(ctx: agents.JobContext):
         ),
 
         vad=ctx.proc.userdata["vad"],
+        aec_warmup_duration=1.0,
 
         turn_handling=TurnHandlingOptions(
             turn_detection=inference.TurnDetector(),
+            endpointing={
+                "mode": "fixed",
+                "min_delay": 0.25,
+                "max_delay": 1.8,
+            },
+            interruption={
+                "enabled": True,
+                "min_duration": 0.35,
+                "false_interruption_timeout": 1.2,
+            },
+            preemptive_generation={
+                "enabled": True,
+                "preemptive_tts": True,
+            },
         ),
     )
 
@@ -280,13 +299,6 @@ async def my_agent(ctx: agents.JobContext):
             })
         )
 
-    # Broadcast startup progress to room
-    await _safe_publish_data({
-        "type": "agent_status",
-        "status": "initializing",
-        "message": "Mia is initializing clinical reception services...",
-    })
-
     await session.start(
         room=ctx.room,
         agent=Assistant(),
@@ -305,25 +317,23 @@ async def my_agent(ctx: agents.JobContext):
         ),
     )
 
-    # Broadcast ready status
-    await _safe_publish_data({
-        "type": "agent_status",
-        "status": "ready",
-        "message": "Mia connected to consultation room.",
-    })
-
     greeting_text = (
         "Hello! Thank you for calling ABC Health Care. My name is Mia. "
         "How can I assist you with your appointment today?"
     )
 
-    await _safe_publish_data({
-        "type": "agent_status",
-        "status": "speaking",
-        "message": "Mia is greeting you...",
-    })
+    # Speak greeting directly via TTS (skips LLM round-trip on call start)
+    session.say(greeting_text, allow_interruptions=True, add_to_chat_ctx=True)
 
-    await session.generate_reply(instructions=f"Say: {greeting_text}")
+    # Broadcast ready status non-blocking and finish DB warmup
+    asyncio.create_task(
+        _safe_publish_data({
+            "type": "agent_status",
+            "status": "ready",
+            "message": "Mia connected to consultation room.",
+        })
+    )
+    await db_task
 
 
 if __name__ == "__main__":

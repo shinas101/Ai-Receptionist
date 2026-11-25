@@ -2,23 +2,30 @@
 const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
 
 /**
- * Handle API responses with robust error and fallback support
+ * Handle API responses with timeout and fallback support
  */
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  const { timeoutMs, ...fetchOptions } = options;
+  const controller = timeoutMs ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
   try {
     const res = await fetch(url, {
+      ...fetchOptions,
+      signal: controller ? controller.signal : fetchOptions.signal,
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...fetchOptions.headers,
       },
-      ...options,
     });
     const data = await res.json();
     return data;
   } catch (err) {
     console.warn(`[API ERROR] ${endpoint}:`, err.message);
     throw err;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
@@ -81,9 +88,15 @@ export const api = {
     });
   },
 
-  // LiveKit Token & Agent Dispatch
+  // LiveKit Config & Token
+  async getConfig() {
+    return apiRequest('/config', { timeoutMs: 2500 });
+  },
+
   async getToken(room = 'receptionist-room', name = 'Patient') {
-    return apiRequest(`/token?room=${encodeURIComponent(room)}&name=${encodeURIComponent(name)}`);
+    return apiRequest(`/token?room=${encodeURIComponent(room)}&name=${encodeURIComponent(name)}`, {
+      timeoutMs: 4000,
+    });
   },
 };
 
