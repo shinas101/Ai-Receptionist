@@ -9,7 +9,7 @@ export function useLiveKit() {
   const [agentAudioLevel, setAgentAudioLevel] = useState(0);
   const [userAudioLevel, setUserAudioLevel] = useState(0);
   const [agentState, setAgentState] = useState('idle'); // idle, connecting, listening, speaking, thinking
-  const [transcripts, setTranscripts] = useState([
+  const [transcripts, setTranscripts] = useState(() => [
     {
       id: 'welcome',
       speaker: 'MIA',
@@ -24,6 +24,10 @@ export function useLiveKit() {
   const [activeToolCall, setActiveToolCall] = useState(null); // { tool: string, message: string, status: 'running'|'completed', timestamp: number }
 
   const roomRef = useRef(null);
+  const connectionStateRef = useRef(connectionState);
+  useEffect(() => {
+    connectionStateRef.current = connectionState;
+  }, [connectionState]);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
@@ -176,7 +180,7 @@ export function useLiveKit() {
         setIsAgentSpeaking(speaking);
         if (speaking) {
           setAgentState('speaking');
-        } else if (connectionState === 'connected') {
+        } else if (connectionStateRef.current === 'connected' || roomRef.current?.state === 'connected') {
           setAgentState('listening');
         }
 
@@ -187,7 +191,7 @@ export function useLiveKit() {
     } catch (e) {
       console.warn('Audio analyzer note:', e);
     }
-  }, [connectionState]);
+  }, []);
 
   // Connect to LiveKit Room & Dispatch Agent
   const connect = useCallback(async (userName = 'Patient') => {
